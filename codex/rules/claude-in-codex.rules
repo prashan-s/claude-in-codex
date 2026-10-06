@@ -1,0 +1,29 @@
+# claude-in-codex: let Codex run the cic CLI outside its sandbox without prompting.
+#
+# Why: Claude Code reads its login from the macOS keychain and writes ~/.claude,
+# both of which the Codex sandbox blocks ("Not logged in"). cic itself only runs
+# Claude Code (inside Claude Code's own permission system) plus verification
+# commands that the orchestrator passed explicitly with --verify.
+#
+# The rule matches a bare `cic ...` command. Wrapping it in `cd ... &&`, pipes,
+# or redirects turns it into a compound shell command that this prefix will not match.
+
+prefix_rule(
+    pattern = ["cic"],
+    decision = "allow",
+    justification = "claude-in-codex: headless Claude Code needs its keychain login and ~/.claude, which the sandbox blocks",
+    match = ["cic run fix-the-bug --cwd /tmp/repo", "cic status"],
+    not_match = ["cicada run"],
+)
+
+prefix_rule(
+    pattern = ["__CIC_BIN__"],
+    decision = "allow",
+    justification = "claude-in-codex launcher by absolute path",
+)
+
+prefix_rule(
+    pattern = ["__CIC_REPO_BIN__"],
+    decision = "allow",
+    justification = "claude-in-codex launcher inside the repository",
+)

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Delegate to Claude"
+  short_description: "Hand a coding task to Claude Code with verification"
+  default_prompt: "Use $claude-delegate to have Claude Code fix this bug and verify it with the test suite."

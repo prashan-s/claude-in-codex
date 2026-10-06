@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "claude-in-codex"
+version = "0.1.0"
+description = "Control Claude Code headless from Codex: routed delegation, verified results, sessions, review, and an agent message bus."
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
+license-files = ["LICENSE"]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/prashan-s/claude-codex-bridge"
+Issues = "https://github.com/prashan-s/claude-codex-bridge/issues"
+
+[project.scripts]
+cic = "cic.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

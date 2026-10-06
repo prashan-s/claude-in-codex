@@ -1,0 +1,4 @@
+interface:
+  display_name: "Claude Prompting"
+  short_description: "Prompt and context engineering for Claude briefs"
+  default_prompt: "Use $claude-prompting to turn this request into a strong brief before delegating it to Claude."

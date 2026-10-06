@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: ci
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.14'
+      - name: Validate release versions
+        env:
+          PYTHONPATH: src
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          import tomllib
+          from pathlib import Path
+          from cic import __version__
+
+          tag = os.environ['GITHUB_REF_NAME']
+          project = tomllib.loads(Path('pyproject.toml').read_text())['project']['version']
+          plugin = json.loads(Path('.codex-plugin/plugin.json').read_text())['version']
+          if not (tag == f'v{project}' and project == plugin == __version__):
+              raise SystemExit(f'Version mismatch: tag={tag}, project={project}, plugin={plugin}, package={__version__}')
+          PY
+      - name: Build and validate release assets
+        run: |
+          python -m pip install build twine
+          python -m build
+          python -m twine check dist/*
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes
