@@ -1,4 +1,0 @@
-interface:
-  display_name: "Claude Review"
-  short_description: "Severity-ranked Claude review of local changes"
-  default_prompt: "Use $claude-review to have Claude review my uncommitted changes adversarially before I merge."

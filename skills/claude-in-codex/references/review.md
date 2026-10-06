@@ -1,10 +1,3 @@
----
-name: claude-review
-description: "Claude Code reviews local git changes or a branch read-only and returns severity-ranked findings with file and line. Use for second-opinion or adversarial pre-merge reviews; not for fixing code."
-metadata:
-  short-description: Read-only Claude code review of local changes
----
-
 # Claude code review
 
 ## Run
@@ -22,9 +15,9 @@ If it returns exit 3 (still running), poll with `cic wait <job> --timeout 300`.
 - Keep the verdict, then the findings in severity order, with file:line exactly as reported.
 - Keep the distinction between confirmed problems and inferences, and the confidence values.
 - If there are no findings, say so and mention residual risk in one line.
-- After presenting findings, stop. Do not fix anything until the user chooses which findings to address. Then fix them yourself, or delegate each one with `$claude-delegate`, using the finding text as the brief plus a `--verify` check.
+- After presenting findings, stop. Do not fix anything until the user chooses which findings to address. Then fix them yourself, or delegate each one with `$claude-in-codex delegate`, using the finding text as the brief plus a `--verify` check.
 
 ## Follow-ups
 - Dig into one finding: `cic reply <job> "Go deeper on finding 2: is the race reachable from the public API?"`
 - Re-review after fixes: run `cic review` again. A fresh review avoids anchoring on the old one.
-- Cross-vendor review loop (Claude implements, Codex reviews, or the other way round): `$claude-pair`.
+- Cross-vendor review loop (Claude implements, Codex reviews, or the other way round): `$claude-in-codex pair`.
