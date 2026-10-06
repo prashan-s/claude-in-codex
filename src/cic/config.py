@@ -23,6 +23,9 @@ DEFAULTS: dict[str, Any] = {
     "wait_seconds": 540,
     # Total turns a write task may spend (first try + repair attempts).
     "max_attempts": 3,
+    # Active-prompt: a "done" report below this confidence gets one targeted uncertainty pass.
+    # Matches the contract's anchors: below 0.7 means a criterion was inferred rather than run.
+    "low_confidence": 0.7,
     "verify_timeout": 900,
     # Hard wall-clock cap per job, and the no-output window treated as a hang.
     "job_timeout": 5400,
@@ -33,7 +36,10 @@ DEFAULTS: dict[str, Any] = {
     "pair_driver": "claude:sonnet",
     "pair_navigator": "claude:opus",
     "pair_rounds": 3,
-    # Run Claude with --safe-mode (no plugins/hooks/CLAUDE.md) unless overridden per call.
+    # Context profile for every Claude run: standard (cache-friendly, no MCP), lean (also no user
+    # plugins/hooks), minimal (safe mode), full (everything). See claude.PROFILES.
+    "profile": "standard",
+    # Legacy switch: true means profile "lean".
     "lean": False,
     "claude_bin": "claude",
     "codex_bin": "codex",

@@ -123,11 +123,30 @@ def access_profile(access: str, *, cwd: str, allow: list[str], deny: list[str], 
     return mode, _dedupe(allowed), _dedupe(disallowed)
 
 
+# Context profiles: what Claude Code loads besides the task. Measured on Claude Code 2.1.291
+# with a trivial prompt: default context about 23.7k tokens; with the standard profile, a job
+# in a different repo reuses about 16.4k cached tokens and writes about 3.3k new ones
+# (baseline: 14.5k cached / 9.8k new), roughly 60% cheaper per job.
+PROFILES = {
+    # Cache-friendly: per-machine sections move out of the system prompt so it is reused
+    # across repos and jobs; no MCP servers (faster start, fewer tool tokens, no side effects).
+    "standard": ["--exclude-dynamic-system-prompt-sections", "--strict-mcp-config"],
+    # Also skip user-level settings (plugins, hooks, output styles). About 3.7k fewer tokens and no
+    # user hooks in delegated runs; keep standard if your auth relies on user settings (apiKeyHelper).
+    "lean": ["--exclude-dynamic-system-prompt-sections", "--strict-mcp-config", "--setting-sources", "project,local"],
+    # Claude Code safe mode: also drops CLAUDE.md, skills, and plugins. Smallest, loses project conventions.
+    "minimal": ["--safe-mode"],
+    # Everything the user has configured, including MCP servers.
+    "full": [],
+}
+
+
 @dataclass
 class ClaudeSpec:
     model: str
     cwd: str
     access: str = "read"
+    profile: str = "standard"
     effort: str | None = None
     fallback: list[str] = field(default_factory=list)
     session_id: str | None = None
@@ -187,8 +206,10 @@ def build_argv(spec: ClaudeSpec) -> list[str]:
         argv += ["--worktree", spec.worktree]
     for directory in spec.add_dirs:
         argv += ["--add-dir", directory]
-    if spec.lean:
-        argv.append("--safe-mode")
+    profile = "lean" if spec.lean and spec.profile == "standard" else spec.profile
+    if profile not in PROFILES:
+        raise ValueError(f"unknown profile {profile!r}; choose from {', '.join(PROFILES)}")
+    argv += PROFILES[profile]
     if spec.name:
         argv += ["--name", spec.name]
     return argv
@@ -269,10 +290,11 @@ class ClaudeProcess:
             except (BrokenPipeError, OSError, ValueError, AssertionError):
                 return False
 
-    def send_user(self, text: str) -> bool:
+    def send_user(self, content: str | list[dict]) -> bool:
+        """Send a user turn: plain text, or content blocks (text plus base64 images)."""
         ok = self._write({
             "type": "user",
-            "message": {"role": "user", "content": text},
+            "message": {"role": "user", "content": content},
             "parent_tool_use_id": None,
         })
         if ok:
@@ -367,6 +389,8 @@ class Progress:
     results: int = 0
     cost_usd: float = 0.0
     models_used: list[str] = field(default_factory=list)
+    # Cumulative for this Claude process (from result.modelUsage): input, output, cache_read, cache_write.
+    tokens: dict = field(default_factory=dict)
     last_event_at: float = field(default_factory=time.time)
 
     def to_dict(self) -> dict:
@@ -431,7 +455,9 @@ class Progress:
         if etype == "result":
             self.results += 1
             self.cost_usd = float(event.get("total_cost_usd") or 0.0)
-            self.models_used = list((event.get("modelUsage") or {}).keys())
+            usage = event.get("modelUsage") or {}
+            self.models_used = list(usage.keys())
+            self.tokens = token_totals(usage)
             return f"turn finished: {event.get('subtype')} ({event.get('terminal_reason')}), {event.get('num_turns')} turns"
         if etype == "control_response":
             response = event.get("response") or {}
@@ -515,6 +541,50 @@ def classify(result: dict | None, *, expect_report: bool, interrupted: bool = Fa
         cost_usd=cost,
         num_turns=result.get("num_turns"),
     )
+
+
+def token_totals(model_usage: dict) -> dict:
+    """Sum Claude Code's per-model usage into input/output/cache_read/cache_write token counts."""
+    totals = {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0}
+    for stats in (model_usage or {}).values():
+        if not isinstance(stats, dict):
+            continue
+        totals["input"] += int(stats.get("inputTokens") or 0)
+        totals["output"] += int(stats.get("outputTokens") or 0)
+        totals["cache_read"] += int(stats.get("cacheReadInputTokens") or 0)
+        totals["cache_write"] += int(stats.get("cacheCreationInputTokens") or 0)
+    return totals
+
+
+def add_tokens(a: dict | None, b: dict | None) -> dict:
+    keys = ("input", "output", "cache_read", "cache_write")
+    return {k: int((a or {}).get(k, 0)) + int((b or {}).get(k, 0)) for k in keys}
+
+
+_IMAGE_TYPES = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".gif": "image/gif",
+                ".webp": "image/webp"}
+MAX_IMAGE_BYTES = 5 * 1024 * 1024
+
+
+def image_block(path: str) -> dict:
+    """Base64 image content block for a user turn (multimodal briefs)."""
+    import base64
+
+    file = Path(path).expanduser()
+    media = _IMAGE_TYPES.get(file.suffix.lower())
+    if not media:
+        raise ValueError(f"unsupported image type {file.suffix!r} (use png, jpg, gif, or webp)")
+    data = file.read_bytes()
+    if len(data) > MAX_IMAGE_BYTES:
+        raise ValueError(f"{file} is larger than 5 MB")
+    return {"type": "image", "source": {"type": "base64", "media_type": media,
+                                         "data": base64.b64encode(data).decode("ascii")}}
+
+
+def user_content(text: str, images: list[str] | None) -> str | list[dict]:
+    if not images:
+        return text
+    return [{"type": "text", "text": text}] + [image_block(p) for p in images]
 
 
 def auth_status() -> dict:

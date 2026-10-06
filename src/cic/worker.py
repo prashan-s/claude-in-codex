@@ -20,7 +20,8 @@ import traceback
 import uuid
 
 from . import config, jobs, prompts, router, schemas, sessions
-from .claude import EOF, ClaudeProcess, ClaudeSpec, Progress, TurnOutcome, build_argv, classify, printable_argv
+from .claude import (EOF, ClaudeProcess, ClaudeSpec, Progress, TurnOutcome, add_tokens, build_argv, classify,
+                     printable_argv, user_content)
 from .render import render_final
 from .util import append_line, atomic_write_json, atomic_write_text, child_env, now_iso, oneline, read_text
 from .verify import run_checks
@@ -41,7 +42,10 @@ class JobRunner:
         self.timeout_reason: str | None = None
         self.started = time.time()
         self.current_model = self.params.get("model")
+        # Usage from finished *other* sessions (the planning phase). A resumed process already
+        # reports the whole conversation's totals, so restarts never add to these.
         self.cost_base = 0.0
+        self.tokens_base: dict = {}
         self._last_save = 0.0
         self._interrupt_at: float | None = None
         self._warned_mode = False
@@ -105,6 +109,7 @@ class JobRunner:
             worktree=p.get("worktree"),
             add_dirs=p.get("add_dirs") or [],
             lean=bool(p.get("lean")),
+            profile=p.get("profile") or ("lean" if config.get("lean") else config.get("profile")),
             name=p.get("name") or self.id,
         )
         values.update(overrides)
@@ -130,8 +135,6 @@ class JobRunner:
             self.proc.finish(grace=1)
         sid = self.progress.session_id or self.job.get("session_id")
         self.log("Claude process ended; resuming the same session")
-        self.cost_base += self.progress.cost_usd
-        self.progress.cost_usd = 0.0
         self.start(self.spec(resume=sid, session_id=None, fork=False))
 
     def interrupt(self, why: str) -> None:
@@ -247,6 +250,7 @@ class JobRunner:
         self.proc.finish(grace=15)
         self.proc = None
         self.cost_base += self.progress.cost_usd
+        self.tokens_base = add_tokens(self.tokens_base, self.progress.tokens)
         self.job["plan_session_id"] = self.progress.session_id
         self.job["plan_progress"] = self.progress.to_dict()
         if self.cancel_requested or outcome.error or not outcome.report:
@@ -261,6 +265,7 @@ class JobRunner:
             p["task"], kind=self.job["kind"], cwd=p["cwd"], files=p.get("files"), context=p.get("context"),
             context_files=p.get("context_files"), criteria=p.get("criteria"), verify=p.get("verify"),
             constraints=p.get("constraints"), read_only=bool(p.get("read_only")), plan=plan,
+            hints=p.get("hints"), examples=p.get("examples"), image_count=len(p.get("images") or []),
         )
         atomic_write_text(self.dir / "brief.md", brief)
         self.log(f"plan ready ({len(plan.get('steps') or [])} steps): {oneline(plan.get('approach'), 160)}")
@@ -276,7 +281,7 @@ class JobRunner:
         attempt = 1
         self.job.update(phase="working", attempt=attempt, schema=p.get("schema"))
         self.start(spec)
-        self.proc.send_user(read_text(self.dir / "brief.md"))
+        self.proc.send_user(user_content(read_text(self.dir / "brief.md"), p.get("images")))
         self.save(force=True)
 
         while True:
@@ -302,7 +307,7 @@ class JobRunner:
                     self.send_followup(prompts.REPORT_MISSING_MESSAGE, attempt)
                     continue
                 return self.finalize("partial", outcome, reason="Claude finished without a structured report")
-            if p.get("schema") in ("review", "plan"):
+            if p.get("schema") in ("review", "plan", "improve"):
                 return self.finalize("done", outcome)
 
             status = report.get("status") or "partial"
@@ -313,11 +318,18 @@ class JobRunner:
                 return self.finalize("blocked", outcome, reason=f"permission denials ({tools}) stopped progress")
             if status == "done":
                 checks = p.get("verify") or []
-                if not checks:
-                    return self.finalize("done", outcome, verified=False)
-                results = self.run_verify(checks)
-                if all(r["ok"] for r in results):
-                    return self.finalize("done", outcome, verified=True)
+                verified = False
+                if checks:
+                    results = self.run_verify(checks)
+                    verified = all(r["ok"] for r in results)
+                if not checks or verified:
+                    if self.wants_uncertainty_pass(report, attempt, max_attempts):
+                        attempt += 1
+                        self.job["uncertainty_checked"] = True
+                        self.log(f"active-prompt: confidence {report.get('confidence')} is low; asking for an uncertainty pass")
+                        self.send_followup(prompts.uncertainty_message(report, self.confidence_bar()), attempt)
+                        continue
+                    return self.finalize("done", outcome, verified=verified)
                 failing = [r for r in results if not r["ok"]]
                 if all(r.get("env_error") for r in failing):
                     # The check itself cannot run here; editing code will not help.
@@ -350,6 +362,31 @@ class JobRunner:
             raise RuntimeError("Claude process stopped accepting input")
         self.log(f"attempt {attempt}: follow-up sent")
         self.save(force=True)
+
+    def account_usage(self) -> None:
+        """Per-job usage: this job's share of the session totals (resumed sessions start from a baseline)."""
+        session_tokens = add_tokens(self.tokens_base, self.progress.tokens)
+        session_cost = self.cost_base + self.progress.cost_usd
+        baseline = self.params.get("baseline") or {}
+        base_tokens = baseline.get("tokens") or {}
+        self.job["session_tokens"] = session_tokens
+        self.job["session_cost_usd"] = round(session_cost, 6)
+        self.job["tokens"] = {k: max(0, v - int(base_tokens.get(k, 0))) for k, v in session_tokens.items()}
+        self.job["cost_usd"] = round(max(0.0, session_cost - float(baseline.get("cost") or 0.0)), 6)
+
+    def confidence_bar(self) -> float:
+        return float(self.params.get("low_confidence") or config.get("low_confidence"))
+
+    def wants_uncertainty_pass(self, report: dict, attempt: int, max_attempts: int) -> bool:
+        """Active-prompt: one extra, targeted turn when Claude itself reports low confidence."""
+        confidence = report.get("confidence")
+        return (
+            self.job["kind"] in router.WRITE_KINDS
+            and not self.job.get("uncertainty_checked")
+            and isinstance(confidence, (int, float))
+            and confidence < self.confidence_bar()
+            and attempt < max_attempts
+        )
 
     def maybe_escalate(self, next_attempt: int, *, hard_failure: bool) -> None:
         """Move one tier up the ladder after repeated failure. Model switches rebuild the
@@ -403,7 +440,7 @@ class JobRunner:
             self.job["verified"] = verified
         self.job["model_final"] = self.progress.model or self.current_model
         self.job["progress"] = self.progress.to_dict()
-        self.job["cost_usd"] = round(self.cost_base + self.progress.cost_usd, 6)
+        self.account_usage()
         self.job["elapsed"] = jobs.refresh(dict(self.job)).get("elapsed")
         if self.job.get("report"):
             atomic_write_json(self.dir / "report.json", self.job["report"])
@@ -412,7 +449,8 @@ class JobRunner:
         if self.job.get("session_name"):
             sessions.record_turn(self.job["session_name"], job_id=self.id,
                                  started=bool(self.job.get("session_started")),
-                                 cost_usd=self.progress.cost_usd, model=self.progress.model)
+                                 cost_usd=self.progress.cost_usd, model=self.progress.model,
+                                 tokens=self.job.get("session_tokens"))
         self.log(f"finished: {status}" + (f" ({reason})" if reason else ""))
         if self.proc:
             self.proc.finish(grace=20)

@@ -63,6 +63,15 @@ def _cost(result: AgentResult) -> float:
         return 0.0
 
 
+def _member_labels(members: list[str]) -> list[str]:
+    counts: dict[str, int] = {}
+    labels = []
+    for spec in members:
+        counts[spec] = counts.get(spec, 0) + 1
+        labels.append(spec if members.count(spec) == 1 else f"{spec}#{counts[spec]}")
+    return labels
+
+
 def _pin_model(spec: str, text: str, kind: str) -> str:
     """Give a bare `claude` spec a concrete tier once, so every round stays on one model (cache-friendly)."""
     vendor, model = agents.parse_spec(spec)
@@ -81,24 +90,29 @@ def run_council(o: Orchestration) -> None:
     o.save(status="running", phase="asking the panel", started_at=now_iso(), worker_pid=os.getpid())
     o.note("cic", members, question, kind="task")
     prompt = prompts.council_member_prompt(question, cwd=cwd, context=p.get("context"), files=p.get("files"))
-    results: dict[str, AgentResult] = {}
+    # Members are keyed by position, so the same spec may appear several times:
+    # e.g. claude:sonnet x3 is classic self-consistency (independent samples, then a vote).
+    labels = _member_labels(members)
+    results: dict[int, AgentResult] = {}
     with ThreadPoolExecutor(max_workers=max(1, min(len(members), int(p.get("parallel") or 3)))) as pool:
         futures = {
             pool.submit(agents.run, spec, prompt, cwd=cwd, kind="research", access="read", parent=o.id,
-                        title=f"council: {question}"): spec
-            for spec in members
+                        title=f"council: {question}"): index
+            for index, spec in enumerate(members)
         }
         for future in as_completed(futures):
-            spec = futures[future]
+            index = futures[future]
+            label = labels[index]
             try:
                 result = future.result()
             except Exception as exc:  # one broken member must not sink the panel
-                result = AgentResult(spec, False, "", error=repr(exc))
-            results[spec] = result
-            o.log(f"{spec}: {'answered' if result.ok else 'unavailable'}" + ("" if result.ok else f" ({result.error})"))
-            o.note(spec, "cic", result.text if result.ok else f"[unavailable] {result.error}", kind="reply",
-                   meta={"ok": result.ok})
-    ordered = [results[s] for s in members]
+                result = AgentResult(members[index], False, "", error=repr(exc))
+            result.spec = label
+            results[index] = result
+            o.log(f"{label}: {'answered' if result.ok else 'unavailable'}" + ("" if result.ok else f" ({result.error})"))
+            o.note(label.replace("#", "-"), "cic", result.text if result.ok else f"[unavailable] {result.error}",
+                   kind="reply", meta={"ok": result.ok})
+    ordered = [results[i] for i in range(len(members))]
     answered = [r for r in ordered if r.ok]
     missing = [r for r in ordered if not r.ok]
     cost = sum(_cost(r) for r in ordered)
@@ -193,7 +207,7 @@ def run_pair(o: Orchestration) -> None:
             break
 
         o.save(phase=f"round {round_no}: navigator")
-        change = gitctx.working_tree(cwd)
+        change = gitctx.working_tree(cwd, limit=40_000)  # navigators read the rest themselves
         checks = None
         if drive.meta.get("job_id"):
             checks = jobs.load(drive.meta["job_id"]).get("verification")
