@@ -12,7 +12,7 @@ Goal: be the first result for "Claude Code in Codex", "Codex delegate to Claude"
 - The CLI installs Codex skills to `~/.codex/skills/` with `-g`, or to `.agents/skills/` per project. That matches our layout.
 
 **Steps (the repo is public as of 2026-10-06):**
-1. `npx skills add prashan-s/claude-in-codex --list` shows all 9 skills. This was verified on 2026-10-06 with telemetry disabled; descriptions update when you push.
+1. `npx skills add prashan-s/claude-in-codex --list` discovers the single `claude-in-codex` skill. Its installed folder includes all nine workflow references; listing discovery does not prove marketplace indexing.
 2. Seed real installs:
    - Your own machines: `npx skills add prashan-s/claude-in-codex -a codex -g`.
    - Collaborators.
@@ -23,7 +23,7 @@ Goal: be the first result for "Claude Code in Codex", "Codex delegate to Claude"
    ```
 4. Keep each skill `description` keyword-rich. Directories and agents both match on it, so mention Claude Code, Codex, delegate, review, Opus, Sonnet, Haiku, and Gemini where it is natural.
 
-**Caveat to communicate.** `npx skills add` copies skill folders only. Users still need the CLI: `uv tool install git+https://github.com/prashan-s/claude-in-codex && cic setup`. The `$claude-setup` skill and the README both say so.
+**Caveat to communicate.** `npx skills add` copies skill folders only. Users still need the CLI: `uv tool install git+https://github.com/prashan-s/claude-in-codex && cic setup`. The `$claude-in-codex setup` skill and the README both say so.
 
 ## 2. Codex plugin marketplace (GitHub-hosted)
 
@@ -33,7 +33,7 @@ codex plugin marketplace add prashan-s/claude-in-codex
 codex plugin add claude-in-codex@claude-in-codex
 ```
 
-**Prepared and tested locally.** `.agents/plugins/marketplace.json` uses `"source": "local", "path": "./"` and points at the repo root, which holds `.codex-plugin/plugin.json`. On 2026-10-06, an install into a throwaway `CODEX_HOME` produced `claude-in-codex@1.0.0` with all 9 skills.
+**Prepared and tested locally.** `.agents/plugins/marketplace.json` uses `"source": "local", "path": "./"` and points at the repo root, which holds `.codex-plugin/plugin.json`. On 2026-10-06, an install into a throwaway `CODEX_HOME` produced `claude-in-codex@1.0.0` with nine standalone skills. Version 2.0.0 replaces those with one indexed bundle; re-test the new package after publishing.
 
 **Steps:**
 - After pushing, test the remote form above in a throwaway `CODEX_HOME`.

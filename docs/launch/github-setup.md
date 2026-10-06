@@ -62,22 +62,20 @@ gh api -X PUT repos/prashan-s/claude-in-codex/branches/main/protection \
 
 Add the test-matrix check names once the first CI run shows them.
 
-## 4. First releases
+## 4. Releases
 
-Follow CONTRIBUTING → Versions and releases:
-1. `1.0.0`: tag what is on `main` now, if you want a baseline release.
-2. `1.1.0`: bump `pyproject.toml`, `src/cic/__init__.py`, and `.codex-plugin/plugin.json` together, move the CHANGELOG `[Unreleased]` section under `1.1.0`, then:
-   ```bash
-   git tag -a 1.1.0 -m "Release 1.1.0" && git push origin 1.1.0
-   ```
-   The release workflow validates the versions and publishes the wheel and source archive.
+Versions 1.0.0 and 1.1.0 are published. Version 2.0.0 introduces the indexed skill bundle.
+Follow [CONTRIBUTING → Versions and releases](../../CONTRIBUTING.md#versions-and-releases):
+update all four version files and the release notes together, push `main`, confirm CI,
+then push an annotated version tag. The workflow publishes the Python wheel and source archive.
+OpenAI plugin archives are built locally and submitted separately.
 
 ## 5. Verify the public install paths (after push)
 
 Run each install path in a clean environment, for example a throwaway `CODEX_HOME`:
 
 ```bash
-npx skills add prashan-s/claude-in-codex --list                 # all 9 skills discovered
+npx skills add prashan-s/claude-in-codex --list                 # one indexed skill discovered; workflow references ship inside it
 codex plugin marketplace add prashan-s/claude-in-codex && codex plugin add claude-in-codex@claude-in-codex
 uv tool install git+https://github.com/prashan-s/claude-in-codex && cic doctor
 ```

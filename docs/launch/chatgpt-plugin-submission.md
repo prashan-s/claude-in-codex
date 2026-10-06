@@ -2,7 +2,7 @@
 
 OpenAI plugins are shared by ChatGPT and Codex. Public plugins are submitted as a ZIP through OpenAI's plugin submission portal and reviewed before publication. This guide follows OpenAI's own submission guidance, from the Plugin Creator plugin's "prepare plugin submission" skill.
 
-**Plugin type: skills-only.** It has 9 skills and no MCP server, so OpenAI requires no MCP test cases, demo recording, or reviewer credentials. Everything else applies: listing fields, the four public URLs, icons, release notes, the publisher's verified identity, countries, and attestations.
+**Plugin type: skills-only.** It has one indexed skill and no MCP server, so OpenAI requires no MCP test cases, demo recording, or reviewer credentials. Everything else applies: listing fields, the four public URLs, icons, release notes, the publisher's verified identity, countries, and attestations.
 
 ## What is ready
 
@@ -41,7 +41,7 @@ OpenAI plugins are shared by ChatGPT and Codex. Public plugins are submitted as 
    ```
    It must print `package checks: PASS` with no URL problems.
 2. In the OpenAI plugin submission portal, upload the ZIP. The upload creates a **draft**; submitting and publishing are separate steps.
-3. Check the saved draft against the package: developer name, the 9 skills, listing text, icons, and release notes.
+3. Check the saved draft against the package: developer name, the indexed skill, listing text, icons, and release notes.
 4. Fill in the review information pages (countries, then attestations) and submit for review.
 5. After approval, publish the approved release and confirm country targeting.
 
