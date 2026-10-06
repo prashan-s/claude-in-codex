@@ -1,0 +1,4 @@
+interface:
+  display_name: "Claude Setup"
+  short_description: "Install and troubleshoot cic for Codex"
+  default_prompt: "Use $claude-setup to check that Codex can control Claude Code and fix anything missing."
