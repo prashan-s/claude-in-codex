@@ -53,6 +53,23 @@ class ManifestTests(unittest.TestCase):
             self.assertEqual(width, height)
             self.assertGreaterEqual(width, minimum)
 
+    def test_index_is_the_only_skill_and_all_references_resolve(self):
+        documents = list((ROOT / "skills").rglob("SKILL.md"))
+        index = ROOT / "skills" / "claude-in-codex" / "SKILL.md"
+        self.assertEqual(documents, [index])
+        self.assertIn("name: claude-in-codex", index.read_text())
+        for workflow in ("delegate", "review", "session", "jobs", "prompting", "pair", "council", "agent-bus", "setup"):
+            self.assertIn(f"references/{workflow}.md", index.read_text())
+        bundle = index.parent.resolve()
+        for doc in bundle.rglob("*.md"):
+            for target in re.findall(r"\]\(([^)]+)\)", doc.read_text()):
+                if "://" in target or target.startswith("#"):
+                    continue
+                path = (doc.parent / target.split("#", 1)[0]).resolve()
+                self.assertTrue(path.is_relative_to(bundle), f"reference escapes bundle: {doc}: {target}")
+                self.assertTrue(path.is_file(), f"missing reference: {doc}: {target}")
+        self.assertEqual(self.ui["websiteURL"], "https://github.com/prashan-s/claude-in-codex")
+
 
 @unittest.skipUnless(BUNDLE.exists(), "local bundle script not present (it is git-ignored)")
 class BundleTests(unittest.TestCase):
@@ -74,7 +91,8 @@ class BundleTests(unittest.TestCase):
                 names = bundle.namelist()
         self.assertTrue(all(name.startswith("claude-in-codex/") for name in names))
         for required in ("plugin.json", ".codex-plugin/plugin.json", "assets/logo.png", "assets/composer-icon.png",
-                         "skills/claude-delegate/SKILL.md", "PRIVACY.md", "TERMS.md", "LICENSE"):
+                         "skills/claude-in-codex/SKILL.md", "skills/claude-in-codex/references/delegate.md",
+                         "PRIVACY.md", "TERMS.md", "LICENSE"):
             self.assertIn(f"claude-in-codex/{required}", names)
         self.assertFalse(any(name.endswith((".app.json", ".html")) or "/src/" in name for name in names))
 

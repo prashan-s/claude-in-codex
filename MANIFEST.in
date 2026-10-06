@@ -1,0 +1,7 @@
+include install.sh uninstall.sh plugin.json PRIVACY.md TERMS.md CHANGELOG.md
+include .codex-plugin/plugin.json .agents/plugins/marketplace.json
+recursive-include bin *
+recursive-include codex *.rules
+recursive-include skills *.md *.yaml
+include assets/logo.png assets/composer-icon.png
+include scripts/check_install.py
