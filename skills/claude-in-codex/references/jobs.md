@@ -1,10 +1,3 @@
----
-name: claude-jobs
-description: "Check on or control cic Claude jobs: progress, wait, results, logs, steer mid-task, switch model, cancel, follow up. Use when asked what Claude is doing, whether it finished, or to redirect or stop it."
-metadata:
-  short-description: Progress, steering, and control of Claude jobs
----
-
 # Monitor and control Claude jobs
 
 Every `cic run`, `ask`, `review`, `say`, `pair`, and `council` call is a job that keeps running even if your command returns. In every command, `<job>` accepts a full id, a unique prefix or suffix, or `last`. Call `cic` as a single plain command.

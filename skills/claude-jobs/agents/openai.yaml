@@ -1,4 +1,0 @@
-interface:
-  display_name: "Claude Jobs"
-  short_description: "Track, steer, and stop running Claude jobs"
-  default_prompt: "Use $claude-jobs to check on the Claude job and tell me what it is doing."
