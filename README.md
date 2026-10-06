@@ -1,6 +1,6 @@
-# Claude Codex Bridge
+# Claude in Codex
 
-[![CI](https://github.com/prashan-s/claude-codex-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/prashan-s/claude-codex-bridge/actions/workflows/ci.yml)
+[![CI](https://github.com/prashan-s/claude-in-codex/actions/workflows/ci.yml/badge.svg)](https://github.com/prashan-s/claude-in-codex/actions/workflows/ci.yml)
 
 Connect OpenAI Codex and Anthropic Claude Code for AI coding, code review, pair programming, and agent collaboration. The command is `cic`; the Python package and plugin retain the name `claude-in-codex`.
 
@@ -31,8 +31,8 @@ Codex ──skill──▶ cic run "fix X" --verify "pytest -q"
 Requirements: macOS or Linux, Python 3.10+, and [Claude Code](https://code.claude.com/docs) logged in (`claude auth status`). Codex CLI is needed for the Codex integration. Gemini CLI is optional.
 
 ```bash
-git clone https://github.com/prashan-s/claude-codex-bridge.git
-cd claude-codex-bridge
+git clone https://github.com/prashan-s/claude-in-codex.git
+cd claude-in-codex
 ./install.sh            # cic → ~/.local/bin, skills → ~/.codex/skills, exec-policy rule → ~/.codex/rules
 cic doctor              # everything should say ok
 ```
@@ -113,7 +113,14 @@ python3 -m unittest discover -s tests -v   # 36 tests; end-to-end via tests/fake
 
 GitHub Actions runs the suite on Linux and macOS with Python 3.10–3.14 for pushes to `main`, pull requests, and manual runs. It also checks shell syntax, installs and removes the CLI in temporary directories, builds the wheel/source distribution, and checks the installed wheel outside the checkout. No Claude, Codex, or Gemini login is needed. Dependabot checks GitHub Actions updates weekly.
 
-To create a release, update the version in `pyproject.toml`, `src/cic/__init__.py`, and `.codex-plugin/plugin.json`, then push a matching tag (for example, `v0.1.0`). The release workflow runs CI, checks those versions against the tag, and publishes a GitHub release with the wheel and source distribution. GitHub's automatic source archives include the installer and skills. It does not publish to PyPI.
+Releases use semantic versions without a `v` prefix, starting at `1.0.0`: increment MAJOR for incompatible changes, MINOR for compatible features, and PATCH for compatible fixes. To create a release, update the version in `pyproject.toml`, `src/cic/__init__.py`, and `.codex-plugin/plugin.json`, then push a matching `MAJOR.MINOR.PATCH` tag. The release workflow runs CI, checks those versions against the tag, and publishes a GitHub release with the wheel and source distribution. GitHub's automatic source archives include the installer and skills. It does not publish to PyPI.
+
+After committing and pushing the version changes:
+
+```bash
+git tag -a 1.0.0 -m "Release 1.0.0"
+git push origin 1.0.0
+```
 The fake binary speaks the same stream-json protocol, including replays, `set_model`, interrupts, and structured output. The protocol was confirmed live against Claude Code 2.1.291 and Codex CLI 0.160.0.
 
 **Verified live:**
