@@ -10,3 +10,7 @@ dist/
 
 # Local maintainer tools
 scripts/bundle.py
+
+# Local skill installations
+.agents/
+skills-lock.json
