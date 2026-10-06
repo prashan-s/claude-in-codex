@@ -1,10 +1,3 @@
----
-name: claude-council
-description: "Ask Claude, Codex, and Gemini the same question in parallel; a moderator reconciles the answers with repository evidence. Use for high-stakes decisions, architecture or library choices, or multi-model opinions. Read-only."
-metadata:
-  short-description: Parallel multi-model panel with a moderator
----
-
 # Multi-model council
 
 ```

@@ -1,4 +1,0 @@
-interface:
-  display_name: "Claude Council"
-  short_description: "Claude, Codex, and Gemini answer; Opus moderates"
-  default_prompt: "Use $claude-council to get Claude, Codex, and Gemini's views on which queue technology we should adopt."
