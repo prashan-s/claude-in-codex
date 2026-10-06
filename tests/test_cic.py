@@ -51,7 +51,8 @@ class Env:
 
     def last_job_id(self):
         jobs_dir = self.home / "jobs"
-        return sorted((p.name for p in jobs_dir.iterdir() if (p / "job.json").exists()))[-1]
+        records = [json.loads((p / "job.json").read_text()) for p in jobs_dir.iterdir() if (p / "job.json").exists()]
+        return max(records, key=lambda job: (job.get("created_ts", 0), job["id"]))["id"]
 
     def argvs(self):
         if not self.argv_log.exists():
@@ -189,7 +190,100 @@ class PromptTests(unittest.TestCase):
         self.assertTrue(any("secret" in w for w in secret))
 
 
+class TechniqueTests(unittest.TestCase):
+    """Every task kind applies its promptingguide.ai techniques (see docs/prompt-audit.md)."""
+
+    MARKERS = {
+        "implement": ["facts your change depends on", "Plan in at most five lines", "two designs are plausible",
+                      "strict reviewer"],
+        "fix": ["Reproduce first", "root cause in one sentence", "two or three candidates"],
+        "debug": ["Hypothesize", "probe script", "confirmed facts from inferences"],
+        "refactor": ["invariants that must not change", "characterization tests"],
+        "test": ["Enumerate the behaviors", "can fail for the right reason"],
+        "docs": ["Read the code before you describe it", "audience", "Run every command and snippet"],
+        "chore": ["exactly the mechanical change"],
+        "research": ["Evidence:", "Answer:", "<output>", "Recommendation", "one bullet per option", "(unverified)"],
+        "plan": ["strong, possible, or ruled out", "two or three materially different"],
+        "explain": ["<output>", "250 words", "small script", "Format example"],
+        "ask": ["<output>", "250 words", "small script", "Format example"],
+    }
+
+    def test_every_kind_has_technique_markers(self):
+        from cic import prompts
+
+        self.assertEqual(set(prompts.TECHNIQUES), set(router.KINDS))
+        with tempfile.TemporaryDirectory() as tmp:
+            for kind, markers in self.MARKERS.items():
+                brief = prompts.build_brief("Do the thing in app.py", kind=kind, cwd=tmp)
+                for marker in markers:
+                    self.assertIn(marker, brief, f"{kind}: missing {marker!r}")
+
+    def test_reflexion_in_every_repair_message(self):
+        from cic import prompts
+
+        failing = [{"ok": False, "command": "pytest", "exit_code": 1, "output_tail": "1 failed"}]
+        messages = [
+            prompts.verification_failed_message(failing, 1, 3),
+            prompts.continue_message({"next_steps": ["finish"]}),
+            prompts.findings_for_driver("claude:opus", 1, {"summary": "no", "findings": []}, ""),
+            prompts.findings_for_driver("codex", 1, None, "raw review"),
+        ]
+        for message in messages:
+            self.assertIn("two-sentence reflection", message)
+            self.assertIn("do not repeat one that failed", message)
+            self.assertIn("pre-existing", message)
+        self.assertIn("Confidence anchors", prompts.CONTRACT_WORK)
+        self.assertIn("try to refute", prompts.build_review_prompt(label="x", change_text="d", focus=None,
+                                                                    adversarial=False))
+        improve = prompts.build_improve_prompt("fix the bug", kind="fix", cwd=".")
+        self.assertIn("two candidate rewrites", improve)
+        self.assertIn("(proposed)", improve)
+
+    def test_active_prompt_and_council_and_review_upgrades(self):
+        from cic import prompts
+
+        uncertainty = prompts.uncertainty_message({"confidence": 0.3, "risks": ["edge"]}, 0.5)
+        self.assertIn("Resolve each one with tools", uncertainty)
+        self.assertIn("ALTERNATIVE:", prompts.council_member_prompt("q?", cwd="."))
+        self.assertIn("self-consistency", prompts.council_synth_prompt("q?", [("a", "x")], []))
+        self.assertIn("step by step", prompts.build_review_prompt(label="x", change_text="d", focus=None,
+                                                                   adversarial=False))
+        self.assertIn("Trace each acceptance criterion", prompts.pair_review_prompt(
+            task="t", criteria=None, round_no=1, driver_report="", checks=None, change_text=""))
+
+    def test_hints_examples_images_blocks(self):
+        from cic import prompts
+
+        with tempfile.TemporaryDirectory() as tmp:
+            brief = prompts.build_brief("Fix it", kind="fix", cwd=tmp, hints=["check the cache key"],
+                                        examples=["feat: add x"], image_count=1)
+        self.assertIn("<hints>", brief)
+        self.assertIn("likely but unverified", brief)
+        self.assertIn("<examples>", brief)
+        self.assertIn("not their content", brief)
+        self.assertIn("<images>", brief)
+
+    def test_lint_suggests_plan_for_big_opus_work(self):
+        from cic import prompts
+
+        warnings = prompts.lint_brief("Refactor the payment module across the codebase to use the new client",
+                                      kind="refactor", criteria=["x"], verify=["y"], files=None, context=None,
+                                      context_files=None, tier="opus")
+        self.assertTrue(any("--plan" in w for w in warnings))
+
+
 class VerifyTests(unittest.TestCase):
+    def test_focus_output_keeps_the_failure_and_the_summary(self):
+        from cic.verify import focus_output
+
+        noise = "\n".join(f"test_case_{i} ... ok" for i in range(400))
+        output = noise + "\nFAIL: test_checkout (tests.test_cart)\nAssertionError: 3 != 4\n" + noise + "\nFAILED (failures=1)"
+        focused = focus_output(output, 3500)
+        self.assertLessEqual(len(focused), 3500)
+        self.assertIn("AssertionError: 3 != 4", focused)
+        self.assertIn("FAILED (failures=1)", focused)
+        self.assertEqual(focus_output("short", 3500), "short")
+
     def test_environment_errors_are_not_code_failures(self):
         from cic.verify import environment_error
 
@@ -387,6 +481,96 @@ class EndToEndTests(unittest.TestCase):
         out = self.e.cic("run", "Implement x", extra={"CODEX_SANDBOX": "seatbelt"})
         self.assertEqual(out.returncode, 6)
         self.assertIn("exec-policy rule", out.stderr)
+
+    def test_hints_examples_and_images_reach_claude(self):
+        png = self.e.work / "shot.png"
+        png.write_bytes(bytes.fromhex("89504e470d0a1a0a") + b"\x00" * 16)
+        inputs = self.e.home / "inputs.jsonl"
+        out = self.e.cic("run", "Fix the layout bug on the settings page", "--model", "sonnet", "--hint",
+                         "the flex container lost min-width", "--example", "fix(ui): keep sidebar width",
+                         "--image", "shot.png", "--wait", "60", extra={"FAKE_CLAUDE_INPUTS": str(inputs)})
+        self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
+        first = json.loads(inputs.read_text().splitlines()[0])
+        self.assertIsInstance(first, list)
+        self.assertIn("<hints>", first[0]["text"])
+        self.assertIn("<examples>", first[0]["text"])
+        self.assertEqual(first[1]["source"]["media_type"], "image/png")
+
+    def test_commit_message_chore_gets_repo_examples(self):
+        subprocess.run(["git", "init", "-q"], cwd=self.e.work, check=True)
+        Path(self.e.work, "a.txt").write_text("x\n")
+        subprocess.run(["git", "add", "-A"], cwd=self.e.work, check=True)
+        subprocess.run(["git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-qm", "feat: initial import"],
+                       cwd=self.e.work, check=True)
+        out = self.e.cic("run", "Write a commit message for the staged changes", "--dry-run")
+        self.assertEqual(out.returncode, 0, out.stderr)
+        self.assertIn("feat: initial import", out.stdout)
+        self.assertIn("few-shot", out.stdout)
+
+    def test_low_confidence_triggers_one_uncertainty_pass(self):
+        out = self.e.cic("run", "Implement the retry policy for the client", "--model", "sonnet", "--wait", "60",
+                         scenario="lowconf")
+        self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
+        job = self.e.job(self.e.last_job_id())
+        self.assertTrue(job["uncertainty_checked"])
+        self.assertEqual(job["attempt"], 2)
+        self.assertIn("uncertainty_check", (self.e.home / "jobs" / job["id"] / "followup-2.md").read_text())
+
+    def test_council_allows_repeated_members_for_self_consistency(self):
+        out = self.e.cic("council", "Is this safe?", "--members", "claude:haiku,claude:haiku", "--synth",
+                         "claude:sonnet", "--wait", "90", scenario="chat")
+        self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
+        self.assertIn("claude:haiku#1", out.stdout)
+        self.assertIn("claude:haiku#2", out.stdout)
+
+    def test_improve_rewrites_brief(self):
+        out = self.e.cic("improve", "fix the bug", "--wait", "60")
+        self.assertEqual(out.returncode, 0, out.stdout + out.stderr)
+        self.assertIn("Improved brief", out.stdout)
+        self.assertIn("cic run", out.stdout)
+        self.assertIn("--verify", out.stdout)
+
+    def test_setup_writes_rule(self):
+        codex_home = self.e.home / "codex"
+        out = self.e.cic("setup", "--codex-home", str(codex_home))
+        rule = (codex_home / "rules" / "claude-in-codex.rules").read_text()
+        self.assertIn('prefix_rule(pattern = ["cic"]', rule)
+        self.assertIn("doctor", out.stdout)
+
+    def test_context_profiles(self):
+        out = self.e.cic("run", "Implement the export feature", "--model", "sonnet", "--dry-run")
+        self.assertIn("--exclude-dynamic-system-prompt-sections", out.stdout)
+        self.assertIn("--strict-mcp-config", out.stdout)
+        self.assertNotIn("--setting-sources", out.stdout)
+        lean = self.e.cic("run", "Implement the export feature", "--model", "sonnet", "--profile", "lean", "--dry-run")
+        self.assertIn("--setting-sources project,local", lean.stdout)
+        minimal = self.e.cic("run", "Implement the export feature", "--model", "sonnet", "--profile", "minimal",
+                             "--dry-run")
+        self.assertIn("--safe-mode", minimal.stdout)
+        self.assertNotIn("--strict-mcp-config", minimal.stdout)
+        full = self.e.cic("run", "Implement the export feature", "--model", "sonnet", "--profile", "full", "--dry-run")
+        self.assertNotIn("--strict-mcp-config", full.stdout)
+
+    def test_token_accounting_counts_only_this_jobs_share(self):
+        out = self.e.cic("run", "Add persistence for user settings", "--model", "sonnet", "--wait", "60",
+                         scenario="needs_input")
+        first = self.e.last_job_id()
+        self.assertEqual(self.e.job(first)["tokens"]["input"], 1000)
+        self.assertIn("tokens 6.5k in (77% cached)", out.stdout)
+        self.e.cic("reply", first, "Use SQLite.", "--wait", "60", scenario="done")
+        second = self.e.job(self.e.last_job_id())
+        self.assertEqual(second["session_tokens"]["input"], 2000)  # the session total keeps growing
+        self.assertEqual(second["tokens"]["input"], 1000)          # this job is billed only for its turn
+        stats = self.e.cic("stats")
+        self.assertIn("| sonnet | 2 |", stats.stdout)
+
+    def test_reports_are_length_capped_with_full_escape_hatch(self):
+        out = self.e.cic("run", "Rename the logger across modules", "--model", "sonnet", "--wait", "60",
+                         scenario="bigreport")
+        self.assertIn("(+8 more files)", out.stdout)
+        self.assertIn("--full", out.stdout)
+        full = self.e.cic("result", "last", "--full")
+        self.assertIn("src/file_19.py", full.stdout)
 
     def test_dry_run_runs_nothing(self):
         out = self.e.cic("run", "Fix the typo in README", "--dry-run")

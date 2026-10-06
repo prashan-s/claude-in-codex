@@ -73,9 +73,6 @@ def emit(obj):
     sys.stdout.flush()
 
 
-cost = 0.0
-
-
 def turn_count():
     try:
         return int(open(state_file).read())
@@ -97,12 +94,29 @@ def report(status, summary, **extra):
     return data
 
 
+def session_usage():
+    """Usage accumulates per session across processes, like Claude Code's resumed totals."""
+    path = os.path.join(os.getcwd(), f".fake_usage_{session}.json")
+    try:
+        usage = json.load(open(path))
+    except (OSError, ValueError):
+        usage = {"input": 0, "output": 0, "cache_read": 0, "cache_write": 0, "cost": 0.0}
+    for key, step in (("input", 1000), ("output", 100), ("cache_read", 5000), ("cache_write", 500)):
+        usage[key] += step
+    usage["cost"] += 0.01
+    with open(path, "w") as handle:
+        json.dump(usage, handle)
+    return usage
+
+
 def finish(result_text=None, structured=None, subtype="success", is_error=False, terminal="completed", denials=None):
-    global cost
-    cost += 0.01
+    usage = session_usage()
     event = {"type": "result", "subtype": subtype, "is_error": is_error, "terminal_reason": terminal,
-             "result": result_text, "session_id": session, "total_cost_usd": round(cost, 4), "num_turns": 1,
-             "permission_denials": denials or [], "queued_turn_count": 0, "modelUsage": {model: {}}}
+             "result": result_text, "session_id": session, "total_cost_usd": round(usage["cost"], 4), "num_turns": 1,
+             "permission_denials": denials or [], "queued_turn_count": 0,
+             "modelUsage": {model: {"inputTokens": usage["input"], "outputTokens": usage["output"],
+                                    "cacheReadInputTokens": usage["cache_read"],
+                                    "cacheCreationInputTokens": usage["cache_write"], "costUSD": usage["cost"]}}}
     if structured is not None:
         event["structured_output"] = structured
         event["result"] = json.dumps(structured)
@@ -124,6 +138,11 @@ def ack(message):
 
 
 def answer_for_schema(turn, text):
+    if schema and '"improved_task"' in schema:
+        return {"issues": [{"problem": "no done criteria", "principle": "specificity", "fix": "added criteria"}],
+                "kind": "fix", "improved_task": "Fix add() in calc.py so add(2, 3) == 5.", "files": ["calc.py"],
+                "done": ["add returns the sum"], "verify": ["python3 -m unittest -q"], "hints": ["operator is wrong"],
+                "constraints": [], "follow_ups": [], "notes": ""}
     if schema and '"verdict"' in schema:
         return report_review()
     if schema and '"steps"' in schema:
@@ -143,8 +162,12 @@ def report_review():
 
 
 def handle(message):
-    text = message["message"]["content"]
-    text = text if isinstance(text, str) else json.dumps(text)
+    content = message["message"]["content"]
+    inputs_log = os.environ.get("FAKE_CLAUDE_INPUTS")
+    if inputs_log:
+        with open(inputs_log, "a") as handle_:
+            handle_.write(json.dumps(content) + "\n")
+    text = content if isinstance(content, str) else json.dumps(content)
     ack(message)
     turn = bump_turn()
     special = answer_for_schema(turn, text)
@@ -166,6 +189,12 @@ def handle(message):
         tool("Edit", {"file_path": os.path.join(os.getcwd(), "answer.txt")})
         open("answer.txt", "w").write(content + "\n")
         finish(structured=report("done", f"wrote {content}"))
+    elif scenario == "bigreport":
+        changes = [{"path": f"src/file_{i}.py", "change": "edited"} for i in range(20)]
+        finish(structured=report("done", "touched many files", changes=changes))
+    elif scenario == "lowconf":
+        finish(structured=report("done", f"turn {turn}", confidence=0.3 if turn == 1 else 0.9,
+                                 risks=["edge case unverified"] if turn == 1 else []))
     elif scenario == "needs_input":
         finish(structured=report("needs_input", "need a decision", open_questions=["Which database?"]))
     elif scenario == "denied":
