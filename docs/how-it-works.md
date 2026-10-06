@@ -45,7 +45,7 @@ Codex ──skill──▶ cic run "fix X" --verify "pytest -q"
 - **Fable:** never selected automatically.
 - **Explaining a decision:** `cic route "<brief>"`.
 
-Full rules: [skills/claude-delegate/references/model-routing.md](../skills/claude-delegate/references/model-routing.md).
+Full rules: [skills/claude-in-codex/references/model-routing.md](../skills/claude-in-codex/references/model-routing.md).
 
 ## The "done means done" guarantee
 
@@ -111,7 +111,7 @@ Everything cic prints lands in the orchestrator's context.
 - **Claude↔Codex:** Codex orchestrates through `cic`. `cic pair --navigator codex` or `--driver codex` puts Codex on either side of a review loop.
 - **Claude↔Claude:** pair loops (Sonnet driver, Opus navigator), or two `cic serve` Claude agents messaging each other with `cic bus ask`.
 - **Claude↔Gemini↔Codex:** `cic council` fan-out with a moderator, or serve all three as bus agents.
-- **Transport:** Maildir-style inboxes in `~/.cic/bus`. Delivery is atomic, each message is claimed exactly once, and thread transcripts are durable. Any process can join; the protocol is in [skills/agent-bus/references/protocol.md](../skills/agent-bus/references/protocol.md).
+- **Transport:** Maildir-style inboxes in `~/.cic/bus`. Delivery is atomic, each message is claimed exactly once, and thread transcripts are durable. Any process can join; the protocol is in [skills/claude-in-codex/references/protocol.md](../skills/claude-in-codex/references/protocol.md).
 - **Recursion guard:** each hop increments `CIC_DEPTH`. Delegated agents can message on the bus but cannot spawn further agents (default `max_depth` is 1).
 
 ## Safety model
@@ -128,7 +128,7 @@ Everything cic prints lands in the orchestrator's context.
 ## Verified live
 
 Verified live against Claude Code 2.1.291 and Codex CLI 0.160.0:
-- a Codex `codex exec` run that triggered `$claude-delegate`, polled a background job, and got a verified result
+- a Codex `codex exec` run that triggered the former `$claude-delegate` skill, polled a background job, and got a verified result (before the 2.0.0 index migration)
 - a repair loop that escalated to Opus
 - `ask` (including `--image`), two-turn `say` sessions, `review`, and `improve`
 - a council of Claude and Codex

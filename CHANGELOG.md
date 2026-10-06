@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-10-06
+
+### Changed
+- Replaced nine standalone skill entries with one `claude-in-codex` index and nine workflow references loaded on demand.
+- Invoke `$claude-in-codex` followed by a workflow name or request; the `cic` CLI commands are unchanged.
+- The installer links the indexed bundle and removes legacy skill symlinks owned by this checkout while preserving user-owned files and unrelated links.
+- Plugin packages include the complete indexed bundle; the listing website is the GitHub repository.
+
+### Migration
+- Reinstall the plugin or run `install.sh`, then restart Codex.
+- For copied skills.sh installations, remove the old standalone copies through the skills CLI after reviewing ownership, then install the indexed skill. Choose project or global scope explicitly.
+
+
 ## [1.1.0] - 2026-10-06
 
 ### Added
@@ -51,6 +64,7 @@ All notable changes to this project are documented here. The format follows [Kee
 - Nine Codex skills, `install.sh` and `uninstall.sh`, the Codex exec-policy rule, and `cic doctor`.
 - CI on Linux and macOS (Python 3.10–3.14), and a tag-based GitHub release workflow.
 
-[Unreleased]: https://github.com/prashan-s/claude-in-codex/compare/1.1.0...HEAD
+[Unreleased]: https://github.com/prashan-s/claude-in-codex/compare/2.0.0...HEAD
+[2.0.0]: https://github.com/prashan-s/claude-in-codex/compare/1.1.0...2.0.0
 [1.1.0]: https://github.com/prashan-s/claude-in-codex/compare/1.0.0...1.1.0
 [1.0.0]: https://github.com/prashan-s/claude-in-codex/releases/tag/1.0.0

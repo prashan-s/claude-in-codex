@@ -31,9 +31,9 @@ git clone https://github.com/prashan-s/claude-in-codex.git && cd claude-in-codex
 
 ---
 
-Claude in Codex is an open-source toolkit that makes [Claude Code](https://code.claude.com/docs) a teammate your [OpenAI Codex](https://developers.openai.com/codex) agent can delegate to, talk with, and cross-check. It ships nine Codex skills and `cic`, a small Python CLI with no dependencies. `cic` runs Claude Code headless, re-checks its work, and reports back in a format Codex can act on. The Python package and the Codex/ChatGPT plugin are both named `claude-in-codex`.
+Claude in Codex is an open-source toolkit that makes [Claude Code](https://code.claude.com/docs) a teammate your [OpenAI Codex](https://developers.openai.com/codex) agent can delegate to, talk with, and cross-check. It ships one indexed Codex skill with nine workflows and `cic`, a small Python CLI with no dependencies. `cic` runs Claude Code headless, re-checks its work, and reports back in a format Codex can act on. The Python package and the Codex/ChatGPT plugin are both named `claude-in-codex`.
 
-> **You:** "Use $claude-delegate to fix the failing checkout test and verify it with pytest."
+> **You:** "Use $claude-in-codex delegate to fix the failing checkout test and verify it with pytest."
 > **Codex** hands the task to Claude. **Claude** finds the root cause, fixes it, and adds a regression test. **cic** re-runs `pytest` itself. **Codex** gets back `DONE ✓ verified` and a summary of the diff.
 
 ## Why use it
@@ -73,7 +73,9 @@ Restart Codex, then try your first delegation below.
 
 **skills.sh (npx skills):**
 ```bash
-npx skills add prashan-s/claude-in-codex -a codex -g
+# Choose one scope:
+npx skills add prashan-s/claude-in-codex -a codex      # current project
+npx skills add prashan-s/claude-in-codex -a codex -g   # global
 uv tool install git+https://github.com/prashan-s/claude-in-codex   # or: pipx install git+https://…
 cic setup                                                          # Codex permission rule + health check
 ```
@@ -94,30 +96,30 @@ Say these to Codex in plain language:
 
 | You want | Say to Codex |
 |---|---|
-| A bug fixed, with proof | "Use $claude-delegate to fix the failing test in tests/test_orders.py and verify with `pytest -q`." |
-| A large change done safely | "Use $claude-delegate with `--plan` to move session storage to Redis behind a feature flag." |
-| A review before you merge | "Use $claude-review to review my uncommitted changes adversarially." |
-| A design discussion | "Use $claude-session to talk through the caching design with Claude Opus." |
-| Pair programming | "Use $claude-pair: Claude implements idempotency keys, Codex reviews until it approves." |
-| Several expert opinions | "Use $claude-council to choose between Redis streams and SQS for our job queue." |
-| To check on Claude | "Use $claude-jobs to show what Claude is doing and tell it to reuse RetryPolicy." |
-| A sharper request | "Use $claude-prompting to turn this request into a strong brief before delegating." |
+| A bug fixed, with proof | "Use $claude-in-codex delegate to fix the failing test in tests/test_orders.py and verify with `pytest -q`." |
+| A large change done safely | "Use $claude-in-codex delegate with `--plan` to move session storage to Redis behind a feature flag." |
+| A review before you merge | "Use $claude-in-codex review to review my uncommitted changes adversarially." |
+| A design discussion | "Use $claude-in-codex session to talk through the caching design with Claude Opus." |
+| Pair programming | "Use $claude-in-codex pair: Claude implements idempotency keys, Codex reviews until it approves." |
+| Several expert opinions | "Use $claude-in-codex council to choose between Redis streams and SQS for our job queue." |
+| To check on Claude | "Use $claude-in-codex jobs to show what Claude is doing and tell it to reuse RetryPolicy." |
+| A sharper request | "Use $claude-in-codex prompting to turn this request into a strong brief before delegating." |
 
 ## What's included
 
-| Skill | What it does |
+| Workflow | What it does |
 |---|---|
-| `$claude-delegate` | Hand a coding task (implement, fix, debug, refactor, tests, docs) to Claude and get a verified result |
-| `$claude-review` | Get a read-only, severity-ranked review of local changes or a branch |
-| `$claude-session` | Talk back and forth with a persistent, named Claude session |
-| `$claude-jobs` | Watch progress, steer mid-task, switch models, cancel, see token usage |
-| `$claude-prompting` | Write strong briefs: prompt and context engineering, with a technique picker |
-| `$claude-pair` | Driver/navigator loop (Claude↔Claude or Claude↔Codex) until the reviewer approves |
-| `$claude-council` | A panel of Claude, Codex, and Gemini, plus a moderator that checks the facts |
-| `$agent-bus` | Agents message each other; run Claude, Codex, or Gemini as long-lived agents |
-| `$claude-setup` | Install, diagnose, and fix problems |
+| `$claude-in-codex delegate` | Hand a coding task (implement, fix, debug, refactor, tests, docs) to Claude and get a verified result |
+| `$claude-in-codex review` | Get a read-only, severity-ranked review of local changes or a branch |
+| `$claude-in-codex session` | Talk back and forth with a persistent, named Claude session |
+| `$claude-in-codex jobs` | Watch progress, steer mid-task, switch models, cancel, see token usage |
+| `$claude-in-codex prompting` | Write strong briefs: prompt and context engineering, with a technique picker |
+| `$claude-in-codex pair` | Driver/navigator loop (Claude↔Claude or Claude↔Codex) until the reviewer approves |
+| `$claude-in-codex council` | A panel of Claude, Codex, and Gemini, plus a moderator that checks the facts |
+| `$claude-in-codex agent-bus` | Agents message each other; run Claude, Codex, or Gemini as long-lived agents |
+| `$claude-in-codex setup` | Install, diagnose, and fix problems |
 
-The `cic` CLI behind them works from any shell or agent. See the [CLI reference](docs/cli.md).
+The single installed folder contains `SKILL.md`, `agents/openai.yaml`, and all workflow references. Earlier standalone skill invocations now route through `$claude-in-codex`; reinstall and restart Codex to migrate. The `cic` CLI behind the workflows works from any shell or agent. See the [CLI reference](docs/cli.md).
 
 ## How it works
 
@@ -165,15 +167,15 @@ More detail: [how it works](docs/how-it-works.md) · [prompt audit](docs/prompt-
 | Report says BLOCKED by permission denials | Re-run with `--access auto`, or allow one command: `--allow 'Bash(npm install *)'` |
 | "verification command cannot run" | Fix the `--verify` command for your environment, for example the project's own test runner |
 
-Run `cic doctor` for a full health check. Every other case is covered in [`$claude-setup`](skills/claude-setup/SKILL.md).
+Run `cic doctor` for a full health check. Every other case is covered in [`$claude-in-codex setup`](skills/claude-in-codex/references/setup.md).
 
 ## FAQ
 
 ### How do I use Claude Code inside OpenAI Codex?
-Install this toolkit, restart Codex, and ask in plain language: "Use $claude-delegate to …". Codex calls `cic`, `cic` runs Claude Code headless, and the verified result comes back into your Codex conversation.
+Install this toolkit, restart Codex, and ask in plain language: "Use $claude-in-codex delegate to …". Codex calls `cic`, `cic` runs Claude Code headless, and the verified result comes back into your Codex conversation.
 
 ### Can Codex delegate tasks to Claude Code automatically?
-Yes. The skills describe when they apply, so Codex can choose `$claude-delegate`, `$claude-review`, and the others on its own. Name a skill with `$skill-name` to pick it yourself.
+Yes. The `$claude-in-codex` index routes your request to the relevant workflow and loads its instructions on demand. Add a workflow name, such as `review` or `delegate`, to select it explicitly.
 
 ### Which Claude model does it use: Opus, Sonnet, or Haiku?
 The smallest model that fits each task: Haiku for simple work, Sonnet by default, Opus for hard problems. If the work fails twice, it moves up one model. Pin a model any time with `--model`.
@@ -201,7 +203,7 @@ No. `cic` runs locally, collects nothing, and only starts the CLIs you already u
 - [How it works](docs/how-it-works.md): architecture, the verification guarantee, the token budget, the message bus, safety
 - [CLI reference](docs/cli.md): every command, flag, and exit code
 - [Prompt audit](docs/prompt-audit.md): how each task type applies promptingguide.ai techniques
-- [Model routing](skills/claude-delegate/references/model-routing.md) · [Task recipes](skills/claude-delegate/references/task-recipes.md) · [Agent bus protocol](skills/agent-bus/references/protocol.md)
+- [Model routing](skills/claude-in-codex/references/model-routing.md) · [Task recipes](skills/claude-in-codex/references/task-recipes.md) · [Agent bus protocol](skills/claude-in-codex/references/protocol.md)
 - Publishing: [ChatGPT / Codex plugin](docs/launch/chatgpt-plugin-submission.md) · [Distribution plan](docs/launch/distribution-plan.md) · [Privacy](PRIVACY.md) · [Terms](TERMS.md) · [Changelog](CHANGELOG.md)
 
 ## Contributing
