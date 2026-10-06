@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Bus"
+  short_description: "Message bus between Codex, Claude, and Gemini"
+  default_prompt: "Use $agent-bus to start a Claude reviewer agent and ask it about my design on a shared thread."
