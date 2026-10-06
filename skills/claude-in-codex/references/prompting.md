@@ -1,10 +1,3 @@
----
-name: claude-prompting
-description: "Write or fix delegation briefs for Claude Code with prompt and context engineering: criteria, verification, hints, examples, and technique choice. Use before non-trivial delegation or when a Claude job came back wrong."
-metadata:
-  short-description: Prompt and context engineering for Claude briefs
----
-
 # Briefing Claude well
 
 cic already wraps every task in a delegation contract (system prompt) and an XML brief with a technique block chosen per task kind. Your job is to supply what only you know: the outcome, the evidence, the scope, and the proof. Preview the assembled prompt with `cic run "…" --dry-run`.
@@ -40,14 +33,14 @@ cic builds every technique below into the task templates (`cic run --dry-run` li
 | UI bug, diagram, error screenshot | Multimodal CoT | `--image shot.png`: Claude describes what matters first, then acts |
 | Bug with symptoms | ReAct hypothesis loop | `--kind debug` (observe → hypothesize → cheapest experiment → confirm) |
 | Large or risky change | Prompt chaining, plan then act | `--plan`: Opus plans read-only, then a fresh run executes the distilled plan |
-| Design choice | Tree of thoughts | `--kind plan` (options rated strong / possible / ruled out) or `$claude-council` |
-| High-stakes answer | Self-consistency | `$claude-council` across vendors, or the same model sampled: `--members claude:sonnet,claude:sonnet,claude:sonnet` |
+| Design choice | Tree of thoughts | `--kind plan` (options rated strong / possible / ruled out) or `$claude-in-codex council` |
+| High-stakes answer | Self-consistency | `$claude-in-codex council` across vendors, or the same model sampled: `--members claude:sonnet,claude:sonnet,claude:sonnet` |
 | Unfamiliar codebase | Generated knowledge, then act | Built into implement and refactor (facts and invariants first); or `cic ask` to map the area, then pass the answer as `--context` |
 | Failed verification or review | Reflexion | Automatic via `--verify`: failures return to the same session with a reflection that bans repeating failed approaches |
 | Numbers, data, transforms | Program-aided (PAL) | Built into the contracts: Claude computes with scripts instead of estimating |
 | Low-confidence report | Active-prompt | Automatic: a report below 0.7 gets one targeted uncertainty pass |
 
-Full technique notes, with sources, are in [references/techniques.md](references/techniques.md). The per-template audit (what each task kind applies and why) is in the repository's `docs/prompt-audit.md`.
+Full technique notes, with sources, are in [references/techniques.md](techniques.md). The per-template audit (what each task kind applies and why) is in the [repository prompt audit](https://github.com/prashan-s/claude-in-codex/blob/main/docs/prompt-audit.md).
 
 ## Context engineering checklist
 - **One task per job.** Unrelated asks go in separate jobs.
@@ -56,7 +49,7 @@ Full technique notes, with sources, are in [references/techniques.md](references
 - **Keep big references in files.** Inline at most about 20 KB; point to the rest.
 - **Don't repeat the contract.** cic adds date, git state, the working agreement, and the output schema automatically.
 
-Details: [references/context-engineering.md](references/context-engineering.md). XML block library for custom prompts (sessions, bus messages, council questions): [references/brief-blocks.md](references/brief-blocks.md).
+Details: [references/context-engineering.md](context-engineering.md). XML block library for custom prompts (sessions, bus messages, council questions): [references/brief-blocks.md](brief-blocks.md).
 
 ## When a job came back wrong
-Diagnose before retrying. [references/antipatterns.md](references/antipatterns.md) lists the usual causes and fixes: a vague outcome, missing evidence, no verify, mixed asks, a wrong tier, an over-stuffed context, and an unrunnable check. Then use `cic reply <job> "<the specific correction>"`. It keeps context, so send only the delta.
+Diagnose before retrying. [references/antipatterns.md](antipatterns.md) lists the usual causes and fixes: a vague outcome, missing evidence, no verify, mixed asks, a wrong tier, an over-stuffed context, and an unrunnable check. Then use `cic reply <job> "<the specific correction>"`. It keeps context, so send only the delta.
