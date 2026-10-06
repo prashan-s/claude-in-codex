@@ -1,10 +1,3 @@
----
-name: claude-session
-description: "Multi-turn conversation with a named, persistent Claude Code session (design talk, codebase Q&A, brainstorming) that keeps context between turns. Not for one-shot tasks or controlling running jobs."
-metadata:
-  short-description: Talk back and forth with a persistent Claude session
----
-
 # Converse with Claude
 
 A session pins a Claude Code session id up front. Every `cic say` is one turn that resumes the same conversation, so Claude keeps its context and the prompt cache stays warm between turns.
@@ -30,7 +23,7 @@ cic say <name> "<message>"
 - **Design partner:** `--model opus --role "Skeptical staff engineer: challenge weak assumptions, prefer simple designs."`
 - **Codebase guide:** `--model haiku` for fast where-is and what-does questions.
 - **Relay for the user:** quote the user's words verbatim, then add the context Claude lacks.
-- **Hand-off:** once the discussion settles on a concrete change, delegate the change with `$claude-delegate`, passing the agreed design as `--context`.
+- **Hand-off:** once the discussion settles on a concrete change, delegate the change with `$claude-in-codex delegate`, passing the agreed design as `--context`.
 
 ## Manage
 `cic session list` · `cic session show <name>` · `cic session rm <name>`
