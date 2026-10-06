@@ -10,6 +10,17 @@ Context engineering decides what information reaches the model, in what form, an
 
 Don't repeat these in your brief. Spend your words on facts only you have.
 
+## Token budget levers cic applies
+
+| Lever | What it does |
+|---|---|
+| Context profile `standard` (default) | Moves per-machine sections out of the system prompt so it is cached across repos; no MCP servers. A second job pays about 3k new tokens instead of about 10k. |
+| `--profile lean` / `minimal` / `full` | lean: also no user plugins or hooks. minimal: safe mode. full: everything, including MCP. |
+| Focused failure output | Repair turns send failing lines plus the summary, at most 6 KB per turn |
+| Session reuse | Repairs, `reply`, and `say` resume the session, so history is a cache read |
+| Report caps | Codex reads capped reports; `cic result --full` on demand |
+| Visibility | Token line in every report; `cic stats` for trends and tips |
+
 ## Principles
 1. **Minimal sufficient context.** Include what changes the decision; omit what doesn't. Exact error text, the failing test name, and the 1–5 relevant paths usually beat pages of background.
 2. **Point, don't paste.** Claude Code reads files and runs searches itself. Inline only small, decisive excerpts. Inlining is capped at about 20 KB per file and 60 KB total, and larger files become pointers automatically.

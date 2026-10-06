@@ -1,6 +1,6 @@
 ---
 name: claude-delegate
-description: Delegate a coding task (implement, fix, debug, refactor, write tests or docs) to Claude Code through the cic CLI, with automatic Haiku/Sonnet/Opus routing, independent verification, and repair retries on the same Claude session. Use when the user wants Claude to do or finish a piece of work in a repository. Not for code review (claude-review), back-and-forth conversation (claude-session), or checking on jobs that are already running (claude-jobs).
+description: "Delegate coding work (implement, fix, debug, refactor, tests, docs) to Claude Code via cic: routes Haiku/Sonnet/Opus, re-runs your checks, and retries until verified. Not for reviews, chats, or monitoring running jobs."
 metadata:
   short-description: Hand a coding task to Claude Code, get a verified result
 ---
@@ -36,8 +36,13 @@ Describe the outcome, where it happens, and how to prove it:
 - **`--done`**: acceptance criteria, one per flag.
 - **`--verify`**: commands that must pass *in this environment*. Use the project's runner, e.g. `uv run pytest -q` or `npm test --silent`. cic runs these itself after Claude reports done.
 - **`--constraint`**: real limits, such as "public API unchanged" or "no new dependencies".
+- **`--hint`**: a likely lead you already suspect. It is labeled unverified, so Claude confirms it before relying on it.
+- **`--example`**: a format or style sample, as literal text or `@path`. Claude matches its form, not its content. Commit and changelog chores get the repo's recent commit subjects automatically.
+- **`--image`**: a screenshot or diagram (png, jpg, gif, or webp, up to 5 MB). Claude describes what matters in it first, then acts.
 
-Preview with `--dry-run`. It shows the route, permissions, contract, and final brief, and runs nothing.
+Preview with `--dry-run`. It shows the route, the prompt techniques applied, permissions, contract, and final brief, and runs nothing. If the request is vague, run `cic improve "<rough brief>" --cwd <repo>` first. It inspects the repo, drafts and scores two rewrites, and prints a ready-to-run `cic run` command.
+
+If Claude reports done with low confidence (below 0.7, meaning a criterion was inferred rather than run), cic spends one extra turn resolving those doubts before accepting the work.
 
 ## Model routing
 Routing is automatic:

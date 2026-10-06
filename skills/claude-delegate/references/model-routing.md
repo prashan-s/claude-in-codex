@@ -43,7 +43,11 @@ cic uses aliases, so each tier follows the newest model in its line.
 
 ## Cost rules of thumb
 - Every model switch inside a session rebuilds the prompt cache once. Pick the model up front instead of switching back and forth.
-- A run carries roughly 20–25k tokens of Claude Code context before your brief; prompt caching makes repeat turns cheap. `--lean` (safe mode: no plugins, hooks, or CLAUDE.md) trims about 20%, at the cost of project instructions.
+- A run carries roughly 20–24k tokens of Claude Code context before your brief.
+  - The default `standard` context profile keeps that prefix identical across repos so it stays cached: a second job in another repo pays about 3k new tokens instead of about 10k.
+  - `--profile lean` also drops user plugins and hooks (about 3.7k fewer tokens).
+  - `--profile full` keeps your MCP servers when a task needs them.
+- Check real usage with `cic stats`; every report also shows its own tokens and cache share.
 - Cost figures in reports are Claude Code's client-side estimates at list price. Subscription plans bill differently.
 - Use `--plan` for large changes. A short Opus planning pass plus a Sonnet execution pass is usually cheaper and better than Opus doing everything.
 

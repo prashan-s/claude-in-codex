@@ -1,6 +1,6 @@
 ---
 name: claude-prompting
-description: Write or repair delegation briefs for Claude Code (cic run, say, pair, council) using Claude-specific prompt and context engineering, covering outcome framing, acceptance criteria, verification, context packing, and choosing a technique such as plan-then-act, prompt chaining, ReAct-style debugging, reflexion, self-consistency, or tree-of-thought. Use before delegating non-trivial work or when a Claude job came back wrong, vague, or incomplete.
+description: "Write or fix delegation briefs for Claude Code with prompt and context engineering: criteria, verification, hints, examples, and technique choice. Use before non-trivial delegation or when a Claude job came back wrong."
 metadata:
   short-description: Prompt and context engineering for Claude briefs
 ---
@@ -29,22 +29,25 @@ Add `--constraint` only for real limits, such as "public API unchanged" or "no n
 - **Ground it in investigation.** "Read the code before answering; never guess about files you haven't opened" is cheap insurance (the contract includes it).
 
 ## Pick a technique
+cic builds every technique below into the task templates (`cic run --dry-run` lists the ones a brief uses). You choose the flags:
+
 | Situation | Technique | How with cic |
 |---|---|---|
+| Rough or vague request | Automatic prompt engineer (APE) | `cic improve "<rough brief>"`: drafts two rewrites, scores them, returns the winner plus a ready-to-run command |
 | Simple, well-specified edit | Zero-shot plus a clear contract | Plain `cic run` with `--done` and `--verify`; routes to Haiku |
-| Output must match a format exactly | Few-shot | `--context-file examples.md` with 1–3 examples; say what to copy |
-| Bug with symptoms | ReAct hypothesis loop | `--kind debug` (observe → hypothesize → cheapest test → confirm) |
+| Output must match a format exactly | Few-shot | `--example "<sample>"` or `--example @examples.md`; commit-message chores get repo history automatically |
+| You know the likely cause | Directional stimulus | `--hint "the cache key ignores locale"` (labeled unverified), or `cic steer` mid-run |
+| UI bug, diagram, error screenshot | Multimodal CoT | `--image shot.png`: Claude describes what matters first, then acts |
+| Bug with symptoms | ReAct hypothesis loop | `--kind debug` (observe → hypothesize → cheapest experiment → confirm) |
 | Large or risky change | Prompt chaining, plan then act | `--plan`: Opus plans read-only, then a fresh run executes the distilled plan |
-| Design choice | Tree of thoughts | `--kind plan` (2–3 options, evaluated, one chosen) or `$claude-council` |
-| High-stakes answer | Self-consistency | `$claude-council` (cross-vendor) or two `cic ask` runs on different tiers |
-| Unfamiliar codebase | Generated knowledge, then act | `cic ask` to map the area first, then pass the answer as `--context` |
-| Failed verification or review | Reflexion | Automatic via `--verify`; manual via `cic reply <job> "<findings>"` |
-| Numbers, data, transforms | Program-aided (PAL) | Ask Claude to write and run a script rather than reason in prose |
-| You know the likely answer | Directional stimulus | `--context "Hint: the cache key ignores locale"` or `cic steer` mid-run |
-| Low-confidence report | Active prompting | Confidence below 0.6: review with `$claude-review` or re-ask before accepting |
-| Same brief keeps failing | Automatic prompt engineering (APE) | `cic ask "Critique this brief and rewrite it: …"`, then keep the winner as a template |
+| Design choice | Tree of thoughts | `--kind plan` (options rated strong / possible / ruled out) or `$claude-council` |
+| High-stakes answer | Self-consistency | `$claude-council` across vendors, or the same model sampled: `--members claude:sonnet,claude:sonnet,claude:sonnet` |
+| Unfamiliar codebase | Generated knowledge, then act | Built into implement and refactor (facts and invariants first); or `cic ask` to map the area, then pass the answer as `--context` |
+| Failed verification or review | Reflexion | Automatic via `--verify`: failures return to the same session with a reflection that bans repeating failed approaches |
+| Numbers, data, transforms | Program-aided (PAL) | Built into the contracts: Claude computes with scripts instead of estimating |
+| Low-confidence report | Active-prompt | Automatic: a report below 0.7 gets one targeted uncertainty pass |
 
-Full technique notes, with sources, are in [references/techniques.md](references/techniques.md).
+Full technique notes, with sources, are in [references/techniques.md](references/techniques.md). The per-template audit (what each task kind applies and why) is in the repository's `docs/prompt-audit.md`.
 
 ## Context engineering checklist
 - **One task per job.** Unrelated asks go in separate jobs.
