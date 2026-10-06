@@ -1,6 +1,6 @@
 ---
 name: claude-setup
-description: Install, verify, or troubleshoot the claude-in-codex toolkit, covering the cic CLI on PATH, the Codex exec-policy rule that lets cic run outside the sandbox, Claude Code login, and the optional Codex and Gemini CLIs. Use when cic is missing, a Claude run fails with authentication, sandbox, permission, or depth errors, or the user asks to set up control of Claude from Codex.
+description: "Install, verify, or troubleshoot cic for Codex: PATH, the exec-policy rule, Claude Code login, and the Codex and Gemini CLIs. Use when cic is missing or a run fails with auth, sandbox, permission, or depth errors."
 metadata:
   short-description: Install and troubleshoot cic for Codex
 ---
@@ -21,6 +21,13 @@ It does three things:
 3. Copies `codex/rules/claude-in-codex.rules` into `~/.codex/rules/`. That rule lets Codex run `cic …` outside its sandbox without prompting.
 
 Restart Codex afterwards so it loads the new skills and rules. `uninstall.sh` reverses all three.
+
+If the skills came from a directory (`npx skills add prashan-s/claude-in-codex -a codex -g`) or the Codex plugin marketplace, only the skill folders were installed. Add the CLI and the rule with:
+```
+uv tool install git+https://github.com/prashan-s/claude-in-codex
+cic setup
+```
+`pipx install git+https://github.com/prashan-s/claude-in-codex` works in place of uv. `cic setup` writes the exec-policy rule and runs `cic doctor`.
 
 ## Why the exec-policy rule matters
 Claude Code keeps its login in the macOS keychain and writes to `~/.claude`. Inside the Codex sandbox it reports "Not logged in" even when you are logged in. The rule only matches a bare `cic …` command, so always call `cic` directly: no `cd … &&`, pipes, redirects, or `$(…)`. Use `--cwd` for the directory. If the rule cannot be installed, approve the escalation prompt when Codex asks to run `cic` outside the sandbox.

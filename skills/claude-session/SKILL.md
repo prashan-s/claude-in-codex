@@ -1,6 +1,6 @@
 ---
 name: claude-session
-description: Hold a multi-turn conversation with a named, persistent Claude Code session for design discussions, codebase questions, brainstorming, or getting Claude's opinion turn by turn, with context kept between turns. Use when the user wants to talk with Claude back and forth or relay a discussion, rather than hand off one task. Not for one-shot delegated work (claude-delegate) or controlling a running job (claude-jobs).
+description: "Multi-turn conversation with a named, persistent Claude Code session (design talk, codebase Q&A, brainstorming) that keeps context between turns. Not for one-shot tasks or controlling running jobs."
 metadata:
   short-description: Talk back and forth with a persistent Claude session
 ---
@@ -24,6 +24,7 @@ cic say <name> "<message>"
 - Stay on one model per session. `--model` on a later turn works, but it rebuilds the prompt cache once.
 - A session edits files only if it was created with `--access edit|auto` and the message explicitly asks for edits.
 - For a long answer, use `cic say <name> "…" --background`, then `cic wait <job>`.
+- Attach a screenshot or diagram to a turn with `--image <path>`.
 
 ## Good uses
 - **Design partner:** `--model opus --role "Skeptical staff engineer: challenge weak assumptions, prefer simple designs."`

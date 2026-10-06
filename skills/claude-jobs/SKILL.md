@@ -1,6 +1,6 @@
 ---
 name: claude-jobs
-description: Monitor and control Claude Code jobs started with cic, including list, live progress, bounded wait, final result, step log, mid-task steering, model switch, cancel, and follow-up on a finished job. Use when the user asks what Claude is doing, whether it finished, to see its result, or to redirect or stop it.
+description: "Check on or control cic Claude jobs: progress, wait, results, logs, steer mid-task, switch model, cancel, follow up. Use when asked what Claude is doing, whether it finished, or to redirect or stop it."
 metadata:
   short-description: Progress, steering, and control of Claude jobs
 ---
@@ -15,7 +15,8 @@ Every `cic run`, `ask`, `review`, `say`, `pair`, and `council` call is a job tha
 | List jobs | `cic jobs` (add `--all` for every directory, `--json` for structured output) |
 | Progress of one job | `cic status <job>` |
 | Block until done, bounded | `cic wait <job> --timeout 300` |
-| Final report | `cic result <job>` (`--json` for the structured report) |
+| Final report | `cic result <job>` (length-capped; `--full` for everything, `--json` for structured) |
+| Token and cost usage | `cic stats` (by model, with tips to spend less) |
 | Step-by-step log | `cic logs <job> --tail 40` (`--raw` for stream events) |
 | Redirect while running | `cic steer <job> "<instruction>"` |
 | Change model while running | `cic model <job> opus` |
