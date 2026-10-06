@@ -17,6 +17,37 @@ import time
 
 from .util import oneline, tail
 
+_SIGNAL = re.compile(
+    r"(FAIL|ERROR|Error|Exception|Traceback|assert|Assertion|expected|panic|✗|×|not ok|failed|error:|E\s{2,})"
+)
+
+
+def focus_output(text: str, limit: int = 3500) -> str:
+    """Keep what explains a failure: signal lines with a little context, plus the tail.
+
+    Raw test output is mostly noise (progress dots, passing tests). Sending only the
+    failing lines and the summary keeps repair turns small without losing the evidence.
+    """
+    text = (text or "").strip()
+    if len(text) <= limit:
+        return text
+    lines = text.splitlines()
+    keep: set[int] = set()
+    for index, line in enumerate(lines):
+        if _SIGNAL.search(line):
+            keep.update(range(max(0, index - 2), min(len(lines), index + 3)))
+    keep.update(range(max(0, len(lines) - 25), len(lines)))  # summary lines usually come last
+    chosen = []
+    previous = -2
+    for index in sorted(keep):
+        if index != previous + 1:
+            chosen.append("…")
+        chosen.append(lines[index])
+        previous = index
+    focused = "\n".join(chosen)
+    return focused if len(focused) <= limit else tail(focused, limit)
+
+
 _NOT_FOUND = re.compile(r"(?:command not found|not found|No such file or directory)", re.I)
 _NO_MODULE = re.compile(r"No module named '?([A-Za-z0-9_.]+)'?")
 _RUNNER = re.compile(r"(?:^|\s)-m\s+([A-Za-z0-9_.]+)")
@@ -61,6 +92,6 @@ def run_checks(commands: list[str], cwd: str, timeout: float) -> list[dict]:
             "ok": code == 0,
             "env_error": None if code == 0 else environment_error(command, code, output),
             "seconds": round(time.time() - started, 1),
-            "output_tail": tail(output.strip(), 3500),
+            "output_tail": focus_output(output, 3500),
         })
     return results

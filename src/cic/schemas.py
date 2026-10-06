@@ -78,4 +78,24 @@ PLAN_REPORT = _obj({
     "open_questions": _STR_LIST,
 })
 
-BY_NAME = {"task": TASK_REPORT, "review": REVIEW_REPORT, "plan": PLAN_REPORT}
+IMPROVE_REPORT = _obj({
+    "issues": {
+        "type": "array",
+        "items": _obj({"problem": _STR, "principle": _STR, "fix": _STR}),
+    },
+    "kind": {
+        "type": "string",
+        "enum": ["ask", "explain", "chore", "docs", "test", "implement", "fix", "refactor", "review", "research",
+                 "debug", "plan"],
+    },
+    "improved_task": {"type": "string", "description": "the rewritten task: outcome first, exact evidence, scope"},
+    "files": _STR_LIST,
+    "done": _STR_LIST,
+    "verify": {"type": "array", "items": _STR, "description": "commands confirmed to exist in this repository"},
+    "hints": _STR_LIST,
+    "constraints": _STR_LIST,
+    "follow_ups": {"type": "array", "items": _STR, "description": "unrelated asks split out of the brief"},
+    "notes": _STR,
+})
+
+BY_NAME = {"task": TASK_REPORT, "review": REVIEW_REPORT, "plan": PLAN_REPORT, "improve": IMPROVE_REPORT}
