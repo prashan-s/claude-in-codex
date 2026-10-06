@@ -23,9 +23,17 @@ def main():
         owned.mkdir(parents=True)
         marker = owned / "keep.txt"
         marker.write_text("user-owned\n")
+        legacy = codex_home / "skills" / "claude-delegate"
+        legacy.symlink_to(ROOT / "skills" / "claude-delegate")
+        foreign = codex_home / "skills" / "claude-jobs"
+        foreign_target = (root / "unrelated-skills").resolve()
+        foreign_target.mkdir()
+        foreign.symlink_to(foreign_target)
         for _ in range(2):
             subprocess.run(["bash", str(ROOT / "install.sh"), "--no-rules"], env=env, check=True)
         assert (bin_dir / "cic").resolve() == ROOT / "bin" / "cic"
+        assert not legacy.is_symlink(), "owned legacy links must be removed even when dangling"
+        assert foreign.resolve() == foreign_target
         for skill in (ROOT / "skills").iterdir():
             if skill.is_dir() and skill.name != owned.name:
                 assert (codex_home / "skills" / skill.name).resolve() == skill
@@ -36,9 +44,18 @@ def main():
         history.write_text("history\n")
         subprocess.run(["bash", str(ROOT / "uninstall.sh")], env=env, check=True)
         assert not (bin_dir / "cic").is_symlink()
-        assert not any(path.is_symlink() for path in (codex_home / "skills").iterdir())
+        assert not (codex_home / "skills" / "claude-in-codex").is_symlink()
+        assert foreign.resolve() == foreign_target
         assert marker.read_text() == "user-owned\n"
         assert history.read_text() == "history\n"
+        # A pre-existing indexed bundle owned by the user must also survive.
+        indexed = codex_home / "skills" / "claude-in-codex"
+        indexed.mkdir()
+        indexed_marker = indexed / "keep.txt"
+        indexed_marker.write_text("user-owned index\n")
+        subprocess.run(["bash", str(ROOT / "install.sh"), "--no-rules"], env=env, check=True)
+        subprocess.run(["bash", str(ROOT / "uninstall.sh")], env=env, check=True)
+        assert indexed_marker.read_text() == "user-owned index\n"
     print("Installer checks passed")
 
 

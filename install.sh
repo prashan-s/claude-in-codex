@@ -6,7 +6,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 CODEX_HOME="${CODEX_HOME:-$HOME/.codex}"
 BIN_DIR="${CIC_BIN_DIR:-$HOME/.local/bin}"
-SKILLS=(claude-delegate claude-review claude-session claude-jobs claude-prompting claude-pair claude-council agent-bus claude-setup)
+SKILLS=(claude-in-codex)
+LEGACY_SKILLS=(claude-delegate claude-review claude-session claude-jobs claude-prompting claude-pair claude-council agent-bus claude-setup)
 INSTALL_RULES=1
 
 for arg in "$@"; do
@@ -29,8 +30,20 @@ chmod +x "$ROOT/bin/cic" "$ROOT/install.sh" "$ROOT/uninstall.sh"
 ln -sfn "$ROOT/bin/cic" "$BIN_DIR/cic"
 echo "linked $BIN_DIR/cic"
 
+for skill in "${LEGACY_SKILLS[@]}"; do
+  target="$CODEX_HOME/skills/$skill"
+  if [ -L "$target" ] && [ "$(readlink "$target")" = "$ROOT/skills/$skill" ]; then
+    rm "$target"
+    echo "removed legacy skill link $target"
+  fi
+done
+
 for skill in "${SKILLS[@]}"; do
   target="$CODEX_HOME/skills/$skill"
+  if [ -L "$target" ] && [ "$(readlink "$target")" != "$ROOT/skills/$skill" ]; then
+    echo "skipped $skill: $target is a link owned by another installation" >&2
+    continue
+  fi
   if [ -e "$target" ] && [ ! -L "$target" ]; then
     echo "skipped $skill: $target exists and is not a symlink" >&2
     continue

@@ -10,8 +10,7 @@ from pathlib import Path
 from . import agents, claude, config
 from .util import oneline, run, which
 
-SKILLS = ["claude-delegate", "claude-review", "claude-session", "claude-jobs", "claude-prompting",
-          "claude-pair", "claude-council", "agent-bus", "claude-setup"]
+SKILLS = ["claude-in-codex"]
 MIN_CLAUDE = (2, 1, 259)  # --permission-prompts
 
 
