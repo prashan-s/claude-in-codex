@@ -1,0 +1,180 @@
+<!doctype html>
+<!--
+  Claude in Codex logo. Source of truth for assets/icon-1024.png, logo.png, composer-icon.png.
+  Export: scripts/export-icon.sh [light|dark]      Compare options: icon.html?grid
+  Full-bleed square by default (hosts apply their own corner masks); ?shape=tile for a rounded tile.
+
+  - One bold C, two apps: the stroke flows from Codex blue (top terminal) to Claude terracotta
+    (bottom terminal), blended in OKLCH so the colors read as one family instead of two parts.
+    The brand colors hold near the terminals and mix through the middle.
+  - Behind it, a faint construction grid in the spirit of Xcode 27's icon: an inset frame,
+    a square grid, and construction circles at the C's real edges and centre axis.
+  - Flat: no glass, glow, texture, or shadow. Geometry on one grid. Legible at 24 px
+    (the grid is hairline-thin and simply disappears at small sizes).
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Claude in Codex logo</title>
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; }
+  body { display: grid; place-items: center; }
+  svg.icon { width: 100vmin; height: 100vmin; display: block; }
+  body.grid { background: #F4F4F6; grid-template-columns: repeat(2, 300px); gap: 24px 40px; padding: 24px;
+              place-content: center; font: 500 13px/1.3 system-ui; color: #3A3A40; }
+  body.grid svg.icon { width: 300px; height: 300px; }
+  body.grid figure { margin: 0; display: grid; gap: 10px; justify-items: center; }
+  body.grid .small { display: flex; gap: 14px; align-items: end; }
+  body.grid .small svg { width: 48px; height: 48px; }
+  body.grid .small svg + svg { width: 24px; height: 24px; }
+</style>
+</head>
+<body>
+<script>
+const params = new URLSearchParams(location.search);
+const CODEX = "#4A5AF6", CLAUDE = "#D97757";
+const TILES = {
+  // Background: very light tints of the two brand colours (same OKLCH path as the C), so the
+  // field matches the mark: pale periwinkle at the top, pale rose, pale peach at the bottom.
+  light: { tint: [0.965, 0.022], line: "rgba(74, 90, 246, 0.10)", accent: "rgba(74, 90, 246, 0.17)" },
+  dark: { tint: [0.20, 0.025], line: "rgba(255, 255, 255, 0.06)", accent: "rgba(255, 255, 255, 0.11)" },
+};
+
+// ---------- color: blend in OKLCH (perceptual), so the middle stays vivid and even ----------
+const toLin = (c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4);
+const toGam = (c) => (c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055);
+function hexToOklch(hex) {
+  const [r, g, b] = [1, 3, 5].map((i) => toLin(parseInt(hex.slice(i, i + 2), 16) / 255));
+  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const L = 0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s;
+  const A = 1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s;
+  const B = 0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s;
+  return [L, Math.hypot(A, B), (Math.atan2(B, A) * 180 / Math.PI + 360) % 360];
+}
+function oklchToHex([L, C, H]) {
+  const a = C * Math.cos(H * Math.PI / 180), b = C * Math.sin(H * Math.PI / 180);
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  const rgb = [
+    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
+    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
+    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
+  ];
+  return "#" + rgb.map((c) => Math.round(Math.min(1, Math.max(0, toGam(Math.min(1, Math.max(0, c))))) * 255)
+    .toString(16).padStart(2, "0")).join("");
+}
+function mix(t, mode) {
+  const p = hexToOklch(CODEX), q = hexToOklch(CLAUDE);
+  if (mode === "oklab") {  // straight line through OKLab: a calmer, desaturated middle
+    const pa = [p[0], p[1] * Math.cos(p[2] * Math.PI / 180), p[1] * Math.sin(p[2] * Math.PI / 180)];
+    const qa = [q[0], q[1] * Math.cos(q[2] * Math.PI / 180), q[1] * Math.sin(q[2] * Math.PI / 180)];
+    const v = pa.map((x, i) => x + (qa[i] - x) * t);
+    return oklchToHex([v[0], Math.hypot(v[1], v[2]), (Math.atan2(v[2], v[1]) * 180 / Math.PI + 360) % 360]);
+  }
+  let dh = q[2] - p[2];
+  if (dh > 180) dh -= 360; if (dh < -180) dh += 360;      // shorter hue path: blue → violet → rose → clay
+  return oklchToHex([p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t, (p[2] + dh * t + 360) % 360]);
+}
+function tint(t, [L, Cc]) {
+  const p = hexToOklch(CODEX), q = hexToOklch(CLAUDE);
+  let dh = q[2] - p[2];
+  if (dh > 180) dh -= 360; if (dh < -180) dh += 360;
+  return oklchToHex([L, Cc, (p[2] + dh * t + 360) % 360]);
+}
+const smooth = (e0, e1, x) => { const t = Math.min(1, Math.max(0, (x - e0) / (e1 - e0))); return t * t * (3 - 2 * t); };
+
+// ---------- geometry ----------
+function squircle(cx, cy, r, n = 5, steps = 360) {
+  let d = "";
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * 2 * Math.PI, c = Math.cos(t), s = Math.sin(t);
+    d += (i ? "L" : "M") + (cx + r * Math.sign(c) * Math.abs(c) ** (2 / n)).toFixed(2) + " "
+       + (cy + r * Math.sign(s) * Math.abs(s) ** (2 / n)).toFixed(2);
+  }
+  return d + "Z";
+}
+const rad = (deg) => deg * Math.PI / 180;
+const pt = (cx, cy, r, deg) => [cx + r * Math.cos(rad(deg)), cy - r * Math.sin(rad(deg))];
+function arcPath(cx, cy, r, a, b) {
+  const [x1, y1] = pt(cx, cy, r, a), [x2, y2] = pt(cx, cy, r, b);
+  const sweep = ((b - a) % 360 + 360) % 360;
+  return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 ${sweep > 180 ? 1 : 0} 0 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+}
+
+const C = { cx: 528, cy: 512, r: 216, w: 124, open: 36 };
+
+// The C as a perceptual gradient along its path: many butt-capped slices (slightly overlapped
+// so no hairline seams show), round terminals in the end colors.
+function flowC(mode) {
+  const { cx, cy, r, w, open } = C, start = open, end = 360 - open, n = 180, out = [];
+  for (let i = 0; i < n; i++) {
+    const a = start + (end - start) * (i / n), b = start + (end - start) * ((i + 1) / n);
+    const t = smooth(0.12, 0.88, (i + 0.5) / n);
+    out.push(`<path d="${arcPath(cx, cy, r, a, Math.min(end, b + 0.8))}" fill="none" stroke="${mix(t, mode)}" stroke-width="${w}"/>`);
+  }
+  const [x1, y1] = pt(cx, cy, r, start), [x2, y2] = pt(cx, cy, r, end);
+  out.push(`<circle cx="${x1}" cy="${y1}" r="${w / 2}" fill="${mix(0, mode)}"/>`);
+  out.push(`<circle cx="${x2}" cy="${y2}" r="${w / 2}" fill="${mix(1, mode)}"/>`);
+  return out.join("");
+}
+
+// Construction grid, in the spirit of Xcode 27's icon: inset frame, square grid, and circles
+// at the C's real outer edge, centre line, and counter, plus the centre axes.
+function constructionGrid(tile, clipId, full) {
+  const lines = [], lo = full ? 0 : 100, hi = full ? 1024 : 924, inset = full ? 112 : 164;
+  const step = (1024 - 2 * inset) / 4;
+  for (let i = 1; i < 4; i++) {
+    if (i === 2) continue;  // the centre axes below run through the C's real (optically shifted) centre
+    const v = inset + step * i;
+    lines.push(`<line x1="${v}" y1="${lo}" x2="${v}" y2="${hi}"/>`, `<line x1="${lo}" y1="${v}" x2="${hi}" y2="${v}"/>`);
+  }
+  const { cx, cy, r, w } = C;
+  return `<g clip-path="url(#${clipId})" fill="none" stroke="${tile.line}" stroke-width="3">
+      ${lines.join("")}
+      <rect x="${inset}" y="${inset}" width="${1024 - 2 * inset}" height="${1024 - 2 * inset}" rx="${full ? 150 : 120}"/>
+      <line x1="${lo}" y1="${cy}" x2="${hi}" y2="${cy}" stroke="${tile.accent}"/>
+      <line x1="${cx}" y1="${lo}" x2="${cx}" y2="${hi}" stroke="${tile.accent}"/>
+      <circle cx="${cx}" cy="${cy}" r="${r + w / 2}" stroke="${tile.accent}"/>
+      <circle cx="${cx}" cy="${cy}" r="${r - w / 2}" stroke="${tile.accent}"/>
+      <circle cx="${cx}" cy="${cy}" r="${(r - w / 2) / 2}" stroke="${tile.line}"/>
+    </g>`;
+}
+
+let uid = 0;
+function icon(tileName, mode, gridOn, label, shapeName = "square") {
+  const tile = TILES[tileName], id = uid++, full = shapeName !== "tile";
+  const shape = full ? "M0 0H1024V1024H0Z" : squircle(512, 512, 412);
+  return `<svg class="icon" viewBox="0 0 1024 1024" role="img" aria-label="${label}">
+    <defs>
+      <clipPath id="clip${id}"><path d="${shape}"/></clipPath>
+      <linearGradient id="bg${id}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0" stop-color="${tint(0, tile.tint)}"/>
+        <stop offset="0.5" stop-color="${tint(0.5, tile.tint)}"/>
+        <stop offset="1" stop-color="${tint(1, tile.tint)}"/>
+      </linearGradient>
+    </defs>
+    <path d="${shape}" fill="url(#bg${id})"/>
+    ${gridOn ? constructionGrid(tile, `clip${id}`, full) : ""}
+    ${flowC(mode)}
+  </svg>`;
+}
+
+if (params.has("grid")) {
+  document.body.classList.add("grid");
+  const cells = [];
+  for (const tile of ["light", "dark"]) for (const shapeName of ["square", "tile"]) {
+    cells.push(`<figure>${icon(tile, "oklch", true, "logo", shapeName)}<div class="small">${icon(tile, "oklch", true, "s", shapeName)}${icon(tile, "oklch", true, "s", shapeName)}</div>
+      <figcaption>${shapeName} · ${tile}</figcaption></figure>`);
+  }
+  document.body.innerHTML += cells.join("");
+} else {
+  document.body.insertAdjacentHTML("beforeend",
+    icon(params.get("t") || "light", params.get("mix") || "oklch", params.get("g") !== "off", "Claude in Codex",
+         params.get("shape") || "square"));
+}
+</script>
+</body>
+</html>
