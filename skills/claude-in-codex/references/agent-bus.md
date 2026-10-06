@@ -1,10 +1,3 @@
----
-name: agent-bus
-description: "Message bus between agents (Codex, Claude sessions, Gemini, scripts): send, receive, ask-and-wait, transcripts, and cic serve bus agents. Use for custom multi-agent pipelines; prefer claude-pair or claude-council for standard patterns."
-metadata:
-  short-description: Message bus and bus agents for multi-agent IPC
----
-
 # Agent message bus
 
 The bus is a set of Maildir-style inboxes on disk (`~/.cic/bus`). Any process that can run `cic` can take part, with no daemon required:
@@ -28,7 +21,7 @@ Agents are plain names: `codex`, `user`, `claude:architect`, `reviewer`, `gemini
 | Read a conversation | `cic bus log t1` (`--brief` trims bodies) |
 | Overview | `cic bus threads` · `cic bus agents` |
 
-`--json` gives the raw envelopes. [references/protocol.md](references/protocol.md) has the envelope schema and delivery semantics.
+`--json` gives the raw envelopes. [references/protocol.md](protocol.md) has the envelope schema and delivery semantics.
 
 ## Bus agents: make Claude, Codex, or Gemini addressable
 ```
@@ -45,7 +38,7 @@ cic serve stop reviewer
 ## Topologies
 - **Codex ↔ Claude:** `cic bus ask --from codex --to reviewer "<diff summary + question>" --wait 600`.
 - **Claude ↔ Claude:** serve `architect` and `implementer`, then send the task to `architect` with "coordinate with implementer". They exchange messages on the thread, and you read the outcome with `cic bus log <thread>`.
-- **Claude ↔ Gemini ↔ Codex:** serve all three (`--agent gemini`, `--agent codex`, `--agent claude:sonnet`) and route questions by strength. For a one-shot fan-out with synthesis, `$claude-council` is simpler.
+- **Claude ↔ Gemini ↔ Codex:** serve all three (`--agent gemini`, `--agent codex`, `--agent claude:sonnet`) and route questions by strength. For a one-shot fan-out with synthesis, `$claude-in-codex council` is simpler.
 - **Human in the loop:** agents can `cic bus send --to user …`, and you relay the reply with `cic bus send --from user …`.
 
 ## Rules of thumb
