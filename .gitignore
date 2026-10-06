@@ -7,3 +7,6 @@ dist/
 *.egg-info/
 .env
 .env.*
+
+# Local maintainer tools
+scripts/bundle.py
