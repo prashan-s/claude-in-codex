@@ -1,0 +1,59 @@
+{
+  "version": 1,
+  "skills": {
+    "agent-bus": {
+      "source": "prashan-s/claude-in-codex",
+      "sourceType": "github",
+      "skillPath": "skills/agent-bus/SKILL.md",
+      "computedHash": "639d068966e4f864f851b7e9d5216fcb0def4f329515b9e870acabb59ef2aa57"
+    },
+    "claude-council": {
+      "source": "prashan-s/claude-in-codex",
+      "sourceType": "github",
+      "skillPath": "skills/claude-council/SKILL.md",
+      "computedHash": "156b0a1623299160a5c96902ef05a88dc8ecf34beefd2918903baa2a1da98ea1"
+    },
+    "claude-delegate": {
+      "source": "prashan-s/claude-in-codex",
+      "sourceType": "github",
+      "skillPath": "skills/claude-delegate/SKILL.md",
+      "computedHash": "57c77c4431fa970975fa5468249f1d8c86bc239f0942206debff84e522e6f9b1"
+    },
+    "claude-jobs": {
+      "source": "prashan-s/claude-in-codex",
+      "sourceType": "github",
+      "skillPath": "skills/claude-jobs/SKILL.md",
+      "computedHash": "87f28787468c061b9eeb73ec18126d953e96f935b84b6a7299de19e454342216"
+    },
+    "claude-pair": {
+      "source": "prashan-s/claude-in-codex",
+      "sourceType": "github",
+      "skillPath": "skills/claude-pair/SKILL.md",
+      "computedHash": "17c72629a77f225abc476342671df002a6e93add2cd27687d5fb7044f2c78544"
+    },
+    "claude-prompting": {
+      "source": "prashan-s/claude-in-codex",
+      "sourceType": "github",
+      "skillPath": "skills/claude-prompting/SKILL.md",
+      "computedHash": "da93420aea6859687cd3ded2bd21f911cc2882d405fa436a31d41543655f0d7f"
+    },
+    "claude-review": {
+      "source": "prashan-s/claude-in-codex",
+      "sourceType": "github",
+      "skillPath": "skills/claude-review/SKILL.md",
+      "computedHash": "699bc8698d4db8c5a4ad7bbc05bfe979f77356de51212219d3c867abfac18dba"
+    },
+    "claude-session": {
+      "source": "prashan-s/claude-in-codex",
+      "sourceType": "github",
+      "skillPath": "skills/claude-session/SKILL.md",
+      "computedHash": "a298f12395d8d6fea919509eb92231bd4bca447b36bdf1cb8ae5f26ebb1e18e8"
+    },
+    "claude-setup": {
+      "source": "prashan-s/claude-in-codex",
+      "sourceType": "github",
+      "skillPath": "skills/claude-setup/SKILL.md",
+      "computedHash": "9e488e46fd1750cd7bf6f993dd2aeac9fa6bd91ec3132e2f51b2850f63e4450c"
+    }
+  }
+}
