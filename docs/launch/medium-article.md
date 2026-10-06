@@ -18,7 +18,7 @@ This article covers three things: how to set it up, how to use it day to day, an
 
 Claude in Codex is two things:
 
-1. **Nine Codex skills**, such as `$claude-delegate`, `$claude-review`, `$claude-pair`, and `$claude-council`. They teach Codex when and how to work with Claude.
+1. **One indexed Codex skill with nine workflows**, such as `$claude-in-codex delegate`, `$claude-in-codex review`, `$claude-in-codex pair`, and `$claude-in-codex council`. They teach Codex when and how to work with Claude.
 2. **`cic`**, a small command-line tool written in standard-library Python. It runs Claude Code headless, tracks the job, re-checks the work, and returns a compact report that Codex can act on.
 
 You don't have to learn `cic` to use it. You talk to Codex the way you normally do, and the skills handle the rest.
@@ -44,7 +44,7 @@ One detail is worth understanding. Codex runs commands in a sandbox, and inside 
 
 In Codex:
 
-> Use $claude-delegate to fix the failing test in this repo. Verify with `python3 -m unittest -q`.
+> Use $claude-in-codex delegate to fix the failing test in this repo. Verify with `python3 -m unittest -q`.
 
 Here is what happened when I ran exactly this against a small repository where `add()` subtracted:
 
@@ -67,25 +67,25 @@ That last section is the point. If the checks fail, the failure output goes back
 
 For risky work, add `--plan`:
 
-> Use $claude-delegate with --plan to move session storage to Redis behind a feature flag.
+> Use $claude-in-codex delegate with --plan to move session storage to Redis behind a feature flag.
 
 Claude Opus explores the code read-only and produces a plan: options it considered, the one it chose, ordered steps, and risks. Then a *fresh* run executes that plan on the routed model. The executor gets the distilled plan, not a long exploration transcript. This is prompt chaining, and it is usually both cheaper and better than one giant run.
 
 ### 3. Second-opinion code reviews
 
-> Use $claude-review to review my uncommitted changes adversarially.
+> Use $claude-in-codex review to review my uncommitted changes adversarially.
 
 You get severity-ranked findings with file and line references. Before reporting a finding, the reviewer must trace it step by step and then *try to refute it*: look for a guard, a caller check, or a test that prevents it. Fewer false alarms reach you.
 
 ### 4. Pair programming between agents
 
-> Use $claude-pair: Claude implements idempotency keys, Codex reviews until it approves.
+> Use $claude-in-codex pair: Claude implements idempotency keys, Codex reviews until it approves.
 
 Claude writes the change, and cic re-runs your checks. Codex then reviews the *actual diff*, not Claude's description of it. In my test, the Codex navigator re-ran all seven tests on its own and approved in round one. When the reviewer requests changes, the findings go back to the driver's session for the next round.
 
 ### 5. A council for hard decisions
 
-> Use $claude-council to choose between Redis streams and SQS for our job queue.
+> Use $claude-in-codex council to choose between Redis streams and SQS for our job queue.
 
 Claude, Codex, and Gemini answer the same question independently. A moderator (Claude Opus by default) then reconciles the answers. It checks disputed facts against your repository and trusts a majority only when the majority cites evidence. If a member is unavailable, the council says so and carries on. On my machine, Gemini CLI's free login tier no longer works, and the report said exactly that.
 

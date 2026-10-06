@@ -13,7 +13,7 @@
 
 | Asset | Spec | Notes |
 |---|---|---|
-| Demo GIF or video | 45–75 s, 1280×720, captions burned in | Storyboard: (1) Codex prompt "Use $claude-delegate to fix the failing test…" → (2) `cic: job … started · fix · sonnet/high` → (3) `cic steer …` mid-run → (4) `DONE ✓ verified` with "Checks re-run by cic: PASS" → (5) `git diff` |
+| Demo GIF or video | 45–75 s, 1280×720, captions burned in | Storyboard: (1) Codex prompt "Use $claude-in-codex delegate to fix the failing test…" → (2) `cic: job … started · fix · sonnet/high` → (3) `cic steer …` mid-run → (4) `DONE ✓ verified` with "Checks re-run by cic: PASS" → (5) `git diff` |
 | Council screenshot | terminal, dark theme, cropped | Synthesis plus "gemini: unavailable" line; shows honest degradation |
 | Bus transcript screenshot | `cic bus log t-cc --brief` | Codex → architect (Claude) → implementer (Claude) → back |
 | Routing card | simple 3-row table image | Haiku / Sonnet / Opus with example tasks |
@@ -24,7 +24,7 @@
 Every post is under 280 characters (checked with `len()`). Post 1 carries the link and the GIF.
 
 1. I made OpenAI Codex delegate coding tasks to Claude Code, and verify the result. Not "I think it's fixed": cic re-runs your tests itself and sends failures back to Claude until they pass. Open source, MIT. github.com/prashan-s/claude-in-codex 🧵
-2. In Codex, say: "Use $claude-delegate to fix the failing test and verify with pytest." Codex hands it off, Claude finds the root cause and adds a regression test, cic re-runs pytest, and Codex gets back DONE ✓ verified.
+2. In Codex, say: "Use $claude-in-codex delegate to fix the failing test and verify with pytest." Codex hands it off, Claude finds the root cause and adds a regression test, cic re-runs pytest, and Codex gets back DONE ✓ verified.
 3. It picks the model per task instead of maxing out: Haiku for lookups and renames, Sonnet for everyday work, Opus only for architecture, security, race conditions, or after two failed attempts.
 4. Second opinions in one command. Claude reviews Codex's diff. Codex reviews Claude's in a pair loop until it approves. Or ask a council: Claude, Codex, and Gemini answer in parallel and Opus moderates, checking disputed facts against your repo.
 5. You stay in control while it works: `cic status`, `cic steer <job> "reuse RetryPolicy"`, `cic model <job> opus`, `cic cancel`. Steering lands at Claude's next tool step, with no restart.
