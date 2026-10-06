@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability privately
+    url: https://github.com/prashan-s/claude-in-codex/security/advisories/new
+    about: Use private vulnerability reporting for security issues.

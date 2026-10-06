@@ -1,0 +1,42 @@
+name: Bug report
+description: Report a reproducible CLI, installer, or integration problem.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For vulnerabilities, use the private reporting link in SECURITY.md. Remove credentials, private paths, and personal agent transcripts from all reports.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `cic --version`, or the commit SHA.
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Python version, and relevant Claude Code / Codex / Gemini CLI versions. State whether this is a real-agent or fake-agent run.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      description: Provide minimal commands and synthetic input, including relevant flags.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and sanitized output
+      description: Include exit codes and relevant errors. Do not attach your full state directory or credentials.
+    validations:
+      required: true

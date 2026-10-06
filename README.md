@@ -107,6 +107,9 @@ Exit codes: 0 done · 1 failed/cancelled · 3 still running · 4 needs attention
 - **Recursion guard:** each hop increments `CIC_DEPTH`. Delegated agents can message on the bus but cannot spawn further agents (default `max_depth` is 1).
 
 ## Development
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, pull requests, verification, and releases. Project participation follows our [Code of Conduct](CODE_OF_CONDUCT.md). Report vulnerabilities privately using [SECURITY.md](SECURITY.md). Licensed under [MIT](LICENSE).
+
 ```bash
 python3 -m unittest discover -s tests -v   # 36 tests; end-to-end via tests/fake_claude.py (no tokens)
 ```
