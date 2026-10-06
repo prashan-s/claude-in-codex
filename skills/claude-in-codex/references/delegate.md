@@ -1,20 +1,13 @@
----
-name: claude-delegate
-description: "Delegate coding work (implement, fix, debug, refactor, tests, docs) to Claude Code via cic: routes Haiku/Sonnet/Opus, re-runs your checks, and retries until verified. Not for reviews, chats, or monitoring running jobs."
-metadata:
-  short-description: Hand a coding task to Claude Code, get a verified result
----
-
 # Delegate a task to Claude Code
 
 `cic run` starts headless Claude Code with a delegation contract, routes the task to the cheapest model that fits, waits, re-runs your checks itself, and sends failures back to the same Claude session until they pass, escalating the model only after repeated failure. You get one compact report.
 
 ## Invocation rules
 - Call `cic` as a single plain command: no `cd … &&`, pipes, redirects, or `$(…)`. The Codex exec-policy rule only matches a bare `cic …` command, and Claude cannot read its login inside the sandbox. Pick the directory with `--cwd <repo>`.
-- Exit codes: 0 done · 4 needs attention (partial / needs_input / blocked) · 1 failed · 3 still running · 5 delegation depth limit (you are already a delegated agent: do the work yourself) · 6 sandboxed or 127 not found (use `$claude-setup`).
+- Exit codes: 0 done · 4 needs attention (partial / needs_input / blocked) · 1 failed · 3 still running · 5 delegation depth limit (you are already a delegated agent: do the work yourself) · 6 sandboxed or 127 not found (use `$claude-in-codex setup`).
 
 ## Workflow
-1. Write the brief (below). For anything beyond a one-liner, apply `$claude-prompting`.
+1. Write the brief (below). For anything beyond a one-liner, apply `$claude-in-codex prompting`.
 2. Run it:
    ```
    cic run "<brief>" --cwd <repo> --verify "<check that must pass>" --done "<criterion>" --file <start-here>
@@ -55,7 +48,7 @@ Override only with a reason:
 - `--plan` for large or risky changes. Opus writes a read-only plan, then a fresh run executes it.
 - `cic route "<brief>"` explains the decision.
 
-Fable is never picked automatically. See [references/model-routing.md](references/model-routing.md).
+Fable is never picked automatically. See [references/model-routing.md](model-routing.md).
 
 ## Permissions
 - Write tasks run in Claude Code's `auto` mode, where a safety classifier approves routine commands. Haiku runs use an allowlist profile instead (`edit`).
@@ -64,5 +57,5 @@ Fable is never picked automatically. See [references/model-routing.md](reference
 - Use `--access full` only when the user explicitly accepts unrestricted execution.
 
 ## More
-- Per-task flags and examples: [references/task-recipes.md](references/task-recipes.md)
+- Per-task flags and examples: [references/task-recipes.md](task-recipes.md)
 - Several independent tasks at once: start one `cic run --background --worktree <name>` per task, then `cic wait` each job.
