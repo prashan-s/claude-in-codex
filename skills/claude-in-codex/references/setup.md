@@ -1,10 +1,3 @@
----
-name: claude-setup
-description: "Install, verify, or troubleshoot cic for Codex: PATH, the exec-policy rule, Claude Code login, and the Codex and Gemini CLIs. Use when cic is missing or a run fails with auth, sandbox, permission, or depth errors."
-metadata:
-  short-description: Install and troubleshoot cic for Codex
----
-
 # Set up and troubleshoot cic
 
 ## Check
@@ -17,12 +10,14 @@ Run the repository's installer from a normal terminal, or let Codex run it with 
 ```
 It does three things:
 1. Links `cic` into `~/.local/bin`.
-2. Links the skills into `~/.codex/skills`.
+2. Links the indexed `claude-in-codex` bundle into `~/.codex/skills`.
 3. Copies `codex/rules/claude-in-codex.rules` into `~/.codex/rules/`. That rule lets Codex run `cic …` outside its sandbox without prompting.
 
 Restart Codex afterwards so it loads the new skills and rules. `uninstall.sh` reverses all three.
 
-If the skills came from a directory (`npx skills add prashan-s/claude-in-codex -a codex -g`) or the Codex plugin marketplace, only the skill folders were installed. Add the CLI and the rule with:
+Choose project or global scope before running the skills CLI. Project scope omits `-g`; global scope includes it.
+
+If the skill came from a directory (`npx skills add prashan-s/claude-in-codex -a codex -g`) or the Codex plugin marketplace, only the skill folders were installed. Add the CLI and the rule with:
 ```
 uv tool install git+https://github.com/prashan-s/claude-in-codex
 cic setup
