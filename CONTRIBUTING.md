@@ -56,7 +56,7 @@ Maintainers use semantic versions without a `v` prefix: `1.0.0`, `1.1.0`, `1.1.1
 
 To release:
 
-1. Update the version in `pyproject.toml`, `src/cic/__init__.py`, and `.codex-plugin/plugin.json` together.
+1. Update the version in `pyproject.toml`, `src/cic/__init__.py`, `.codex-plugin/plugin.json`, and `plugin.json` together. The test suite fails if they drift. Add the release notes to `CHANGELOG.md` and to `plugin.json` → `extensions.com.openai.publication.release_notes`.
 2. Commit and push the changes to `main`; confirm CI passes.
 3. Create an annotated tag matching those versions and push it:
 
