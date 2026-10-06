@@ -1,146 +1,219 @@
-# Claude in Codex
+<p align="center">
+  <img src="assets/logo.png" width="96" height="96" alt="Claude in Codex logo: one bold C flowing from Codex blue into Claude terracotta on a soft matching background with a faint construction grid">
+</p>
 
-[![CI](https://github.com/prashan-s/claude-in-codex/actions/workflows/ci.yml/badge.svg)](https://github.com/prashan-s/claude-in-codex/actions/workflows/ci.yml)
+<h1 align="center">Claude in Codex: use Claude Code from OpenAI Codex</h1>
 
-Connect OpenAI Codex and Anthropic Claude Code for AI coding, code review, pair programming, and agent collaboration. The command is `cic`; the Python package and plugin retain the name `claude-in-codex`.
+<p align="center">
+  <strong>Delegate coding tasks from Codex to Claude Code and get back results that were checked, not just claimed.</strong><br>
+  Claude code reviews, Claude + Codex pair programming, and Claude / Codex / Gemini panels, routed to Haiku, Sonnet, or Opus per task.
+</p>
 
-Control Claude Code from Codex. One stdlib-only Python CLI (`cic`) plus nine Codex skills let Codex:
-- delegate coding work to headless Claude Code, with model routing and independently verified results
-- hold multi-turn conversations with Claude
-- steer or cancel running jobs
-- run Claude↔Claude and Claude↔Codex pair loops and Claude/Codex/Gemini councils
-- wire agents together over a file-based message bus
+<p align="center">
+  <a href="https://github.com/prashan-s/claude-in-codex/actions/workflows/ci.yml"><img src="https://github.com/prashan-s/claude-in-codex/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT"></a>
+  <a href="pyproject.toml"><img src="https://img.shields.io/badge/python-3.10%2B-blue.svg" alt="Python 3.10 or newer"></a>
+  <a href="#faq"><img src="https://img.shields.io/badge/works%20with-Codex%20%C2%B7%20Claude%20Code%20%C2%B7%20Gemini%20CLI-D97757.svg" alt="Works with Codex, Claude Code, and Gemini CLI"></a>
+</p>
 
+<p align="center">
+  <a href="#install-in-2-minutes">Install</a> ·
+  <a href="#try-it-in-codex">Try it</a> ·
+  <a href="#whats-included">What's included</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#faq">FAQ</a> ·
+  <a href="#documentation">Docs</a>
+</p>
+
+```bash
+git clone https://github.com/prashan-s/claude-in-codex.git && cd claude-in-codex && ./install.sh
 ```
-Codex ──skill──▶ cic run "fix X" --verify "pytest -q"
-                  │  route: haiku | sonnet | opus (+effort, fallback)
-                  │  claude -p --input-format stream-json --output-format stream-json
-                  │        --json-schema <report> --append-system-prompt-file <contract>
-                  ▼
-           detached worker ── steer / model / cancel ◀── cic steer|model|cancel
-                  │  result → strict classification (is_error, terminal_reason, denials)
-                  │  status done → cic re-runs --verify itself
-                  │     fail → failure output back to the SAME session (reflexion)
-                  │     fail again → escalate one tier (set_model), retry
-                  ▼
-           compact report: status, changes, ground-truth checks, open questions
-```
 
-## Install
+---
 
-Requirements: macOS or Linux, Python 3.10+, and [Claude Code](https://code.claude.com/docs) logged in (`claude auth status`). Codex CLI is needed for the Codex integration. Gemini CLI is optional.
+Claude in Codex is an open-source toolkit that makes [Claude Code](https://code.claude.com/docs) a teammate your [OpenAI Codex](https://developers.openai.com/codex) agent can delegate to, talk with, and cross-check. It ships nine Codex skills and `cic`, a small Python CLI with no dependencies. `cic` runs Claude Code headless, re-checks its work, and reports back in a format Codex can act on. The Python package and the Codex/ChatGPT plugin are both named `claude-in-codex`.
+
+> **You:** "Use $claude-delegate to fix the failing checkout test and verify it with pytest."
+> **Codex** hands the task to Claude. **Claude** finds the root cause, fixes it, and adds a regression test. **cic** re-runs `pytest` itself. **Codex** gets back `DONE ✓ verified` and a summary of the diff.
+
+## Why use it
+
+| Without Claude in Codex | With Claude in Codex |
+|---|---|
+| Copy context between two agent windows | Codex hands Claude the task, the files, and the checks |
+| "That should fix it" | `DONE ✓ verified`: your test command re-run by cic, not just claimed |
+| The biggest model for everything | Haiku, Sonnet, or Opus, whichever fits the task |
+| One model's opinion | Claude reviews Codex's work, Codex reviews Claude's, or three models weigh in |
+| A vague prompt gets a vague result | Built-in prompt engineering, plus `cic improve` to sharpen rough requests |
+| Waiting and hoping | Live progress, mid-task steering, model switching, and cancel |
+
+- **Verified results.** cic re-runs your checks itself. Failures go back to the same Claude session with the exact output, and Claude keeps going until the checks pass or it can say precisely why it can't.
+- **The right model for each task.** Haiku handles lookups and small edits. Sonnet does everyday engineering. Opus is reserved for architecture, concurrency, security, or repeated failures.
+- **Lower token use.** The default cache-friendly context profile keeps Claude Code's system prompt reusable across repos.
+  - In a live test, the same question in a second repo read 93% of its prompt from cache and cost about a third less ($0.02 vs $0.03).
+  - In a raw-flag benchmark, a second job wrote about 3k new prompt tokens instead of about 10k.
+  - Failure output is trimmed to the lines that matter before it goes back to Claude, and reports are capped before Codex reads them.
+- **Agents that talk to each other.** Claude↔Claude, Claude↔Codex, and Claude, Codex, and Gemini together, over a local message bus.
+
+## Install in 2 minutes
+
+**You need:** macOS or Linux, Python 3.10+, [Claude Code](https://code.claude.com/docs) logged in (`claude auth status`), and the Codex CLI or app.
 
 ```bash
 git clone https://github.com/prashan-s/claude-in-codex.git
 cd claude-in-codex
-./install.sh            # cic → ~/.local/bin, skills → ~/.codex/skills, exec-policy rule → ~/.codex/rules
-cic doctor              # everything should say ok
+./install.sh     # skills → ~/.codex/skills · cic → ~/.local/bin · Codex permission rule → ~/.codex/rules
+cic doctor       # every line should say ok
 ```
-Restart Codex afterwards. `./uninstall.sh` reverses the install; add `--purge` to also delete `~/.cic`.
 
-**Why an exec-policy rule?** Inside the Codex sandbox, Claude Code can't read its keychain login, so it reports "Not logged in". The rule `prefix_rule(pattern=["cic"], decision="allow")` lets Codex run a bare `cic …` command outside the sandbox without asking.
+Restart Codex, then try your first delegation below.
 
-The trade-off: with the rule installed, everything a `cic` invocation carries runs unsandboxed and unprompted. That includes any `--verify "<command>"` string, `--access full` runs, and whatever Claude does under its `auto` mode classifier. Text that Codex picked up from an untrusted repository can therefore reach your machine through these flags. If you want Codex to ask before each run, install with `./install.sh --no-rules` instead.
+<details>
+<summary><strong>Other ways to install:</strong> skills.sh, Codex plugin marketplace, pip/uv</summary>
 
-## Skills (Codex)
+**skills.sh (npx skills):**
+```bash
+npx skills add prashan-s/claude-in-codex -a codex -g
+uv tool install git+https://github.com/prashan-s/claude-in-codex   # or: pipx install git+https://…
+cic setup                                                          # Codex permission rule + health check
+```
 
-| Skill | Use it to |
+**Codex plugin marketplace:**
+```bash
+codex plugin marketplace add prashan-s/claude-in-codex
+codex plugin add claude-in-codex@claude-in-codex
+uv tool install git+https://github.com/prashan-s/claude-in-codex && cic setup
+```
+
+**Uninstall:** `./uninstall.sh` (add `--purge` to also delete local job history in `~/.cic`).
+</details>
+
+## Try it in Codex
+
+Say these to Codex in plain language:
+
+| You want | Say to Codex |
 |---|---|
-| `$claude-delegate` | hand a coding task to Claude and get a verified result |
-| `$claude-review` | get a read-only, severity-ranked Claude review of local changes |
-| `$claude-session` | talk back and forth with a persistent, named Claude session |
-| `$claude-jobs` | watch, wait on, steer, re-model, cancel, or continue jobs |
-| `$claude-prompting` | write strong briefs (prompt and context engineering, technique picker) |
-| `$claude-pair` | run a driver/navigator loop: Claude↔Claude or Claude↔Codex until approved |
-| `$claude-council` | ask Claude, Codex, and Gemini in parallel, with an Opus moderator |
-| `$agent-bus` | message between agents, and run Claude/Codex/Gemini as bus agents |
-| `$claude-setup` | install, diagnose, and troubleshoot |
+| A bug fixed, with proof | "Use $claude-delegate to fix the failing test in tests/test_orders.py and verify with `pytest -q`." |
+| A large change done safely | "Use $claude-delegate with `--plan` to move session storage to Redis behind a feature flag." |
+| A review before you merge | "Use $claude-review to review my uncommitted changes adversarially." |
+| A design discussion | "Use $claude-session to talk through the caching design with Claude Opus." |
+| Pair programming | "Use $claude-pair: Claude implements idempotency keys, Codex reviews until it approves." |
+| Several expert opinions | "Use $claude-council to choose between Redis streams and SQS for our job queue." |
+| To check on Claude | "Use $claude-jobs to show what Claude is doing and tell it to reuse RetryPolicy." |
+| A sharper request | "Use $claude-prompting to turn this request into a strong brief before delegating." |
 
-The repository is also a Codex plugin (`.codex-plugin/plugin.json`). Even when installed as a plugin, `cic` and the rule still come from `install.sh`.
+## What's included
 
-## CLI at a glance
+| Skill | What it does |
+|---|---|
+| `$claude-delegate` | Hand a coding task (implement, fix, debug, refactor, tests, docs) to Claude and get a verified result |
+| `$claude-review` | Get a read-only, severity-ranked review of local changes or a branch |
+| `$claude-session` | Talk back and forth with a persistent, named Claude session |
+| `$claude-jobs` | Watch progress, steer mid-task, switch models, cancel, see token usage |
+| `$claude-prompting` | Write strong briefs: prompt and context engineering, with a technique picker |
+| `$claude-pair` | Driver/navigator loop (Claude↔Claude or Claude↔Codex) until the reviewer approves |
+| `$claude-council` | A panel of Claude, Codex, and Gemini, plus a moderator that checks the facts |
+| `$agent-bus` | Agents message each other; run Claude, Codex, or Gemini as long-lived agents |
+| `$claude-setup` | Install, diagnose, and fix problems |
 
-```bash
-cic run "Fix: empty cart returns 500; expected 400 empty_cart" --cwd ~/app \
-        --file src/orders/api.py --verify "uv run pytest -q" --done "regression test added"
-cic run "Migrate sessions to Redis behind a flag" --plan --background   # opus plans, fresh run executes
-cic ask "Where is rate limiting configured?"                            # read-only, usually haiku
-cic review --adversarial                                                 # read-only findings
-cic say design "Should pagination be cursor-based here?"                # persistent conversation
-cic status | wait <job> --timeout 300 | result <job> | logs <job>
-cic steer <job> "use the existing RetryPolicy" | model <job> opus | cancel <job>
-cic reply <job> "also handle 404"                                      # same Claude session
-cic pair "Add idempotency keys to POST /payments" --navigator codex --verify "make test"
-cic council "LISTEN/NOTIFY vs Redis streams vs SQS for job fan-out?"
-cic serve start reviewer --agent claude:opus && cic bus ask --from codex --to reviewer "…" --wait 600
-cic route "<brief>"     # explain the model decision
-cic run "<brief>" --dry-run   # show route, argv, contract, and brief; run nothing
+The `cic` CLI behind them works from any shell or agent. See the [CLI reference](docs/cli.md).
+
+## How it works
+
 ```
-Exit codes: 0 done · 1 failed/cancelled · 3 still running · 4 needs attention (partial / needs_input / blocked) · 5 depth limit · 6 sandboxed.
+Codex ── skill ──▶ cic run "<task>" --verify "<check>"
+                     │ picks haiku / sonnet / opus, starts Claude Code headless
+                     ▼
+              Claude works ◀── steer · switch model · cancel
+                     │ structured report
+                     ▼
+              cic re-runs your checks ── fail ──▶ same Claude session gets the output (repeat, then escalate)
+                     │ pass
+                     ▼
+              short report back to Codex: status, changes, checks, open questions, tokens
+```
 
-## Model routing
-| Tier | When | Effort |
+More detail: [how it works](docs/how-it-works.md) · [prompt audit](docs/prompt-audit.md) (how every task applies [promptingguide.ai](https://www.promptingguide.ai/) techniques).
+
+## Picks the right Claude model
+
+| Model | Typical tasks | Why |
 |---|---|---|
-| `haiku` | lookups, explanations, typos, renames, formatting, commit messages | none (not supported) |
-| `sonnet` (default) | features, fixes, tests, refactors, reviews, research | medium for clear scope, high for fixes, debugging, refactors, and reviews |
-| `opus` | architecture, concurrency, security, ambiguous root causes, large multi-module work, failures from lower tiers | high, or xhigh for hands-on security and concurrency work |
+| **Haiku** | "where is X", summaries, typos, renames, commit messages | fastest and cheapest |
+| **Sonnet** (default) | features, bug fixes, tests, refactors, reviews | best balance of speed and quality |
+| **Opus** | architecture, race conditions, security, ambiguous root causes, big multi-module changes | deepest reasoning, used only when needed |
 
-- **Aliases.** Routing uses Claude Code aliases, so each tier tracks the newest model in its line.
-- **Fallbacks.** haiku→sonnet, sonnet→opus, opus→sonnet. The haiku fallback also covers Haiku 4.5's announced retirement window.
-- **Escalation.** It happens only after repeated failure, because switching models rebuilds the prompt cache.
-- **Fable.** It is never selected automatically.
+- **Override** with `--model` or `--tier`.
+- **See why** a task got its model with `cic route "<task>"`.
+- **Fable** is never chosen automatically.
 
-`cic route` explains each decision.
+## Safe by default
 
-## How the "done means done" guarantee works
-1. **Contract.** Claude gets a delegation contract appended to its system prompt: investigate first, minimal diffs, root causes, honest verification, no commits, side effects confined to the repo, and status semantics. It also gets an XML brief whose technique block depends on the task kind: reproduce-first fixes, hypothesis-loop debugging, characterization-tested refactors, and tree-of-thought plans.
-2. **Structured report.** Output is enforced by `--json-schema`.
-3. **Strict success check.** A result counts as success only with `is_error == false`, a completed terminal reason, and an acceptable report. Claude Code reports auth failures as `subtype: success`, and cic catches them.
-4. **Ground-truth checks.** Your `--verify` commands are re-run by cic, never Claude's self-reported ones. Failures go back to the same session.
-5. **Escalation and blocking.** Repeated failures escalate the model. Unrunnable checks, permission denials, and needs-input stop with a precise reason instead of looping.
+- **Read-only questions and reviews.** Nothing changes unless the task asks for edits.
+- **No commits or pushes.** Blocked unless you pass `--allow-git-write`.
+- **Changes stay in the repo.** A missing tool is reported, never installed globally.
+- **No delegation loops.** Each hop is depth-limited.
+- **Your choice on sandboxing.** Codex's sandbox hides Claude Code's login, so `install.sh` adds a Codex permission rule that runs bare `cic …` commands outside the sandbox. Anything passed to `cic`, including `--verify` commands, then runs without a prompt. To approve each run instead, install with `./install.sh --no-rules`.
 
-## Communication pipeline
-- **Claude↔Codex:** Codex orchestrates through `cic`, and `cic pair --navigator codex` or `--driver codex` puts Codex on either side of a review loop.
-- **Claude↔Claude:** pair loops (Sonnet driver, Opus navigator), or two `cic serve` Claude agents messaging each other with `cic bus send`.
-- **Claude↔Gemini↔Codex:** `cic council` fan-out with moderation, or serve all three as bus agents.
-- **Transport:** Maildir-style inboxes in `~/.cic/bus` with atomic delivery, exactly-once claiming, and durable thread transcripts. Any process can join (see `skills/agent-bus/references/protocol.md`).
-- **Recursion guard:** each hop increments `CIC_DEPTH`. Delegated agents can message on the bus but cannot spawn further agents (default `max_depth` is 1).
+## If something goes wrong
 
-## Development
+| What you see | What to do |
+|---|---|
+| Claude says "Not logged in" when run from Codex | Re-run `./install.sh` (or `cic setup`), call `cic` as a plain command (not `cd … && cic …`), and restart Codex |
+| `cic: command not found` | Run `./install.sh`, or call `bin/cic` from the cloned folder |
+| Report says BLOCKED by permission denials | Re-run with `--access auto`, or allow one command: `--allow 'Bash(npm install *)'` |
+| "verification command cannot run" | Fix the `--verify` command for your environment, for example the project's own test runner |
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, pull requests, verification, and releases. Project participation follows our [Code of Conduct](CODE_OF_CONDUCT.md). Report vulnerabilities privately using [SECURITY.md](SECURITY.md). Licensed under [MIT](LICENSE).
+Run `cic doctor` for a full health check. Every other case is covered in [`$claude-setup`](skills/claude-setup/SKILL.md).
+
+## FAQ
+
+### How do I use Claude Code inside OpenAI Codex?
+Install this toolkit, restart Codex, and ask in plain language: "Use $claude-delegate to …". Codex calls `cic`, `cic` runs Claude Code headless, and the verified result comes back into your Codex conversation.
+
+### Can Codex delegate tasks to Claude Code automatically?
+Yes. The skills describe when they apply, so Codex can choose `$claude-delegate`, `$claude-review`, and the others on its own. Name a skill with `$skill-name` to pick it yourself.
+
+### Which Claude model does it use: Opus, Sonnet, or Haiku?
+The smallest model that fits each task: Haiku for simple work, Sonnet by default, Opus for hard problems. If the work fails twice, it moves up one model. Pin a model any time with `--model`.
+
+### Does it work with a Claude Pro or Max subscription?
+Yes. It uses your existing Claude Code login, subscription or API key. No extra keys are needed.
+
+### Does it work with Gemini CLI?
+Yes, as a panel member or a bus agent. If Gemini CLI isn't installed or logged in, cic reports it as unavailable and continues without it. Gemini CLI's free Code Assist login is no longer accepted; `GEMINI_API_KEY` is the likely fix.
+
+### Can I use it from Claude Code, Cursor, or other agents?
+`cic` is a plain CLI, so any agent with a shell can call it. For example, Claude Code can run `cic pair --driver codex` or `cic council`. The skills use the open SKILL.md format and are written for Codex as the orchestrator.
+
+### Is it available as a ChatGPT or Codex plugin?
+The package is ready for OpenAI's plugin directory and installs today from the Codex plugin marketplace (see [Install](#install-in-2-minutes)). The skills run local commands, so they need Codex with a shell on your machine.
+
+### How much does it cost, and how do I track tokens?
+It runs on your existing Claude and Codex plans. Every report shows its token use and the share read from cache. `cic stats` totals usage by model and suggests concrete ways to spend less.
+
+### Does my code go anywhere new?
+No. `cic` runs locally, collects nothing, and only starts the CLIs you already use. Each of those talks to its own provider exactly as when you run it yourself. See [PRIVACY.md](PRIVACY.md).
+
+## Documentation
+
+- [How it works](docs/how-it-works.md): architecture, the verification guarantee, the token budget, the message bus, safety
+- [CLI reference](docs/cli.md): every command, flag, and exit code
+- [Prompt audit](docs/prompt-audit.md): how each task type applies promptingguide.ai techniques
+- [Model routing](skills/claude-delegate/references/model-routing.md) · [Task recipes](skills/claude-delegate/references/task-recipes.md) · [Agent bus protocol](skills/agent-bus/references/protocol.md)
+- Publishing: [ChatGPT / Codex plugin](docs/launch/chatgpt-plugin-submission.md) · [Distribution plan](docs/launch/distribution-plan.md) · [Privacy](PRIVACY.md) · [Terms](TERMS.md) · [Changelog](CHANGELOG.md)
+
+## Contributing
+
+Bug reports, task recipes, and router tuning are all welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, pull requests, and releases. Participation follows our [Code of Conduct](CODE_OF_CONDUCT.md). Report vulnerabilities privately as described in [SECURITY.md](SECURITY.md).
 
 ```bash
-python3 -m unittest discover -s tests -v   # 36 tests; end-to-end via tests/fake_claude.py (no tokens)
+python3 -m unittest discover -s tests -v   # end-to-end through a fake Claude binary; no login or tokens needed
 ```
 
-GitHub Actions runs the suite on Linux and macOS with Python 3.10–3.14 for pushes to `main`, pull requests, and manual runs. It also checks shell syntax, installs and removes the CLI in temporary directories, builds the wheel/source distribution, and checks the installed wheel outside the checkout. No Claude, Codex, or Gemini login is needed. Dependabot checks GitHub Actions updates weekly.
+If Claude in Codex saves you a round-trip, **star the repo**. That helps other Codex and Claude Code users find it.
 
-Releases use semantic versions without a `v` prefix, starting at `1.0.0`: increment MAJOR for incompatible changes, MINOR for compatible features, and PATCH for compatible fixes. To create a release, update the version in `pyproject.toml`, `src/cic/__init__.py`, and `.codex-plugin/plugin.json`, then push a matching `MAJOR.MINOR.PATCH` tag. The release workflow runs CI, checks those versions against the tag, and publishes a GitHub release with the wheel and source distribution. GitHub's automatic source archives include the installer and skills. It does not publish to PyPI.
+## License
 
-After committing and pushing the version changes:
-
-```bash
-git tag -a 1.0.0 -m "Release 1.0.0"
-git push origin 1.0.0
-```
-The fake binary speaks the same stream-json protocol, including replays, `set_model`, interrupts, and structured output. The protocol was confirmed live against Claude Code 2.1.291 and Codex CLI 0.160.0.
-
-**Verified live:**
-- a Codex `codex exec` run that triggered `$claude-delegate`, polled a background job, and got a verified result
-- the repair loop with escalation to Opus
-- `ask`, two-turn `say` sessions, and `review`
-- a council of Claude and Codex
-- the Codex→Claude and Claude↔Claude bus
-- a Claude-driver, Codex-navigator `pair` loop
-- `steer`, `cancel`, and `--worktree`
-
-**Tested only against the fake binary:**
-- `--plan`
-- `cic reply`
-- `pair --driver codex`
-
-## Known limits
-- **Gemini.** Only the failure path has been exercised. On the development machine, Gemini CLI 0.46.0's Code Assist login fails with `IneligibleTierError`. Council and bus runs that include Gemini report it as unavailable and continue without it. Setting `GEMINI_API_KEY` is the likely fix, but it is untested, and so is the parsing of a successful Gemini response.
-- **Cost figures.** They are Claude Code's client-side estimates at list price. Subscription billing differs.
-- **Auth.** `--bare` is not used because it requires an API key. `--lean` (safe mode) is the opt-in low-overhead profile.
+[MIT](LICENSE) © 2026 Prashan Samarathunge
