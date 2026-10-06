@@ -1,4 +1,0 @@
-interface:
-  display_name: "Claude Pair"
-  short_description: "Driver and navigator agents loop to approval"
-  default_prompt: "Use $claude-pair so Claude implements this change and Claude Opus reviews it until approved."
