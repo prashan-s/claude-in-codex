@@ -67,6 +67,7 @@ def _summary(job: dict) -> dict:
         "model": job.get("model_final") or (job.get("params") or {}).get("model"),
         "escalations": job.get("escalations"),
         "cost_usd": job.get("cost_usd"),
+        "tokens": job.get("tokens"),
         "elapsed_s": round(job.get("elapsed") or 0, 1),
         "thread": job.get("thread"),
     }
@@ -98,6 +99,15 @@ def _launch(job: dict, args, start_line: str) -> int:
     return _finish_or_status(job["id"], float(timeout), getattr(args, "json", False))
 
 
+def _profile(args) -> str:
+    """Context profile: --profile, else --lean, else config (see claude.PROFILES)."""
+    if getattr(args, "profile", None):
+        return args.profile
+    if getattr(args, "lean", False) or config.get("lean"):
+        return "lean"
+    return str(config.get("profile"))
+
+
 def _guards(dry_run: bool = False) -> None:
     jobs.guard_depth()
     if not dry_run:
@@ -115,6 +125,38 @@ def _route_args(args, task: str, *, kind: str | None = None) -> router.Route:
 
 # ----------------------------------------------------------------- run
 
+def _examples(values: list[str] | None, cwd: str) -> list[str]:
+    """--example takes literal text or @path (read relative to --cwd)."""
+    found = []
+    for value in values or []:
+        if value.startswith("@"):
+            path = os.path.join(cwd, os.path.expanduser(value[1:]))
+            try:
+                with open(path, encoding="utf-8") as handle:
+                    found.append(handle.read()[:8000])
+            except OSError as exc:
+                raise CicError(f"--example {value}: {exc}", code=2)
+        else:
+            found.append(value)
+    return found
+
+
+def _images(values: list[str] | None, cwd: str) -> list[str]:
+    from .claude import image_block
+
+    paths = []
+    for value in values or []:
+        path = value if os.path.isabs(value) else os.path.join(cwd, os.path.expanduser(value))
+        if not os.path.isfile(path):
+            raise CicError(f"--image {value}: file not found", code=2)
+        try:
+            image_block(path)  # validate type and size now, not inside the worker
+        except ValueError as exc:
+            raise CicError(f"--image {value}: {exc}", code=2)
+        paths.append(os.path.abspath(path))
+    return paths
+
+
 def cmd_run(args) -> int:
     task = _text(args.task, args.task_file, "task text")
     cwd = _cwd(args.cwd)
@@ -126,6 +168,15 @@ def cmd_run(args) -> int:
     max_attempts = args.max_attempts or (int(config.get("max_attempts")) if write else 1)
     escalate = args.escalate if args.escalate is not None else not r.explicit_model
     lean = args.lean or bool(config.get("lean"))
+    hints = args.hint or []
+    examples = _examples(args.example, cwd)
+    if not examples and prompts.wants_message_examples(task, kind):
+        recent = prompts.repo_message_examples(cwd)
+        if recent:  # few-shot from the repository's own history
+            examples = ["Recent commit subjects in this repository:\n" + "\n".join(recent)]
+    images = _images(args.image, cwd)
+    techniques = prompts.techniques_for(kind, hints=bool(hints), examples=bool(examples), images=bool(images),
+                                        plan=args.plan)
     params = {
         "task": task, "kind": kind, "model": r.model, "effort": r.effort, "fallback": r.fallback,
         "access": r.access, "cwd": cwd, "schema": schema, "files": args.file or [], "context": args.context or [],
@@ -134,32 +185,38 @@ def cmd_run(args) -> int:
         "allow_git_write": args.allow_git_write, "max_attempts": max_attempts, "escalate": escalate,
         "allow_fable": args.allow_fable or bool(config.get("allow_fable_escalation")),
         "max_turns": args.max_turns, "budget": args.budget, "timeout": args.timeout, "worktree": args.worktree,
-        "add_dirs": args.add_dir or [], "lean": lean, "plan": args.plan, "plan_model": args.plan_model,
-        "read_only": r.access == "read", "name": args.name, "route": r.to_dict(),
+        "add_dirs": args.add_dir or [], "lean": lean, "profile": _profile(args), "plan": args.plan,
+        "plan_model": args.plan_model,
+        "read_only": r.access == "read", "name": args.name, "route": r.to_dict(), "hints": hints,
+        "examples": examples, "images": images, "techniques": [name for name, _ in techniques],
     }
     warnings = list(r.warnings) + prompts.lint_brief(task, kind=kind, criteria=args.done, verify=args.verify,
                                                      files=args.file, context=args.context,
-                                                     context_files=args.context_file)
+                                                     context_files=args.context_file, tier=r.tier, plan=args.plan)
     system = prompts.contract_for(kind)
     if args.plan:
         brief = None
         plan_brief = prompts.build_plan_brief(task, cwd=cwd, files=args.file, context=args.context,
                                               context_files=args.context_file, criteria=args.done, verify=args.verify,
-                                              constraints=args.constraint)
+                                              constraints=args.constraint, hints=hints)
     else:
         plan_brief = None
         brief = prompts.build_brief(task, kind=kind, cwd=cwd, files=args.file, context=args.context,
                                     context_files=args.context_file, criteria=args.done, verify=args.verify,
-                                    constraints=args.constraint, read_only=r.access == "read")
+                                    constraints=args.constraint, read_only=r.access == "read", hints=hints,
+                                    examples=examples, image_count=len(images))
     if args.dry_run:
         spec = ClaudeSpec(model=r.model, cwd=cwd, access=r.access, effort=r.effort, fallback=r.fallback,
                           session_id="<pre-assigned>", schema={} if schema else None, system_file="<system.md>",
                           allow=args.allow or [], deny=args.deny or [], verify=args.verify or [],
                           allow_git_write=args.allow_git_write, max_turns=args.max_turns, budget_usd=args.budget,
-                          worktree=args.worktree, add_dirs=args.add_dir or [], lean=lean)
+                          worktree=args.worktree, add_dirs=args.add_dir or [], profile=_profile(args))
         out = [f"route: {r.kind} -> {r.label()} · access {r.access} · fallback {','.join(r.fallback) or '-'} · "
                f"attempts {max_attempts} · escalate {escalate} · schema {schema or 'text'}",
-               "why: " + "; ".join(r.reasons)]
+               "why: " + "; ".join(r.reasons),
+               "techniques (promptingguide.ai): " + "; ".join(f"{n}: {how}" for n, how in techniques)]
+        if images:
+            out.append(f"images: {len(images)} attached")
         out += [f"warning: {w}" for w in warnings]
         out += ["", "argv: " + printable_argv(build_argv(spec)), "", "----- system (appended) -----", system,
                 "----- " + ("plan brief" if args.plan else "brief") + " -----", plan_brief or brief or ""]
@@ -193,14 +250,64 @@ def cmd_ask(args) -> int:
         kind = "research"
     args.read_only = True
     r = _route_args(args, question, kind=kind)
+    images = _images(args.image, cwd)
     params = {"task": question, "kind": kind, "model": r.model, "effort": r.effort, "fallback": r.fallback,
               "access": "read", "cwd": cwd, "schema": None, "max_attempts": 1, "escalate": False,
-              "add_dirs": args.add_dir or [], "lean": args.lean or bool(config.get("lean")), "route": r.to_dict()}
+              "add_dirs": args.add_dir or [], "profile": _profile(args), "route": r.to_dict(),
+              "images": images, "hints": args.hint or []}
     job = jobs.create(kind, cwd=cwd, title=question, params=params)
     jobs.write_file(job, "system.md", prompts.contract_for(kind))
     jobs.write_file(job, "brief.md", prompts.build_brief(question, kind=kind, cwd=cwd, files=args.file,
-                                                          context=args.context, read_only=True))
+                                                          context=args.context, read_only=True, hints=args.hint,
+                                                          image_count=len(images)))
     return _launch(job, args, f"cic: job {job['id']} · {kind} · {r.label()} · read-only")
+
+
+def cmd_improve(args) -> int:
+    """APE: have Claude critique and rewrite a brief (read-only, grounded in the repo)."""
+    task = _text(args.task, args.task_file, "brief to improve")
+    cwd = _cwd(args.cwd)
+    _guards()
+    kind = args.kind or router.infer_kind(task)[0]
+    model = router.normalize_model(args.model) or "sonnet"
+    route = router.route(task, kind=kind, model=model, effort=args.effort or "medium", access="read")
+    params = {"task": task, "kind": "improve", "model": route.model, "effort": route.effort,
+              "fallback": route.fallback, "access": "read", "cwd": cwd, "schema": "improve", "max_attempts": 1,
+              "escalate": False, "profile": _profile(args), "route": route.to_dict(), "target_kind": kind}
+    job = jobs.create("improve", cwd=cwd, title=f"improve brief: {task}", params=params)
+    jobs.write_file(job, "system.md", prompts.contract_for("improve"))
+    jobs.write_file(job, "brief.md", prompts.build_improve_prompt(task, kind=kind, cwd=cwd))
+    return _launch(job, args, f"cic: job {job['id']} · improving a {kind} brief · {route.label()} · read-only")
+
+
+def cmd_setup(args) -> int:
+    """Finish an install done via `npx skills add` + pip/uv: write the Codex exec-policy rule, then run doctor."""
+    from . import doctor
+
+    codex_home = os.path.expanduser(args.codex_home or os.environ.get("CODEX_HOME") or "~/.codex")
+    if not args.no_rule:
+        rules_dir = os.path.join(codex_home, "rules")
+        os.makedirs(rules_dir, exist_ok=True)
+        paths = ["cic"]
+        if os.path.basename(sys.argv[0]) == "cic":  # also allow the absolute paths Codex may type
+            for candidate in (os.path.abspath(sys.argv[0]), os.path.realpath(sys.argv[0])):
+                if candidate not in paths:
+                    paths.append(candidate)
+        rules = [
+            "# claude-in-codex: let Codex run the cic CLI outside its sandbox (Claude Code needs its keychain login).",
+            "# Trade-off: anything passed to cic (including --verify commands) then runs unsandboxed without a prompt.",
+        ]
+        for entry in paths:
+            rules.append(f'prefix_rule(pattern = ["{entry}"], decision = "allow", '
+                         'justification = "claude-in-codex: headless Claude Code needs keychain login and ~/.claude")')
+        target = os.path.join(rules_dir, "claude-in-codex.rules")
+        with open(target, "w", encoding="utf-8") as handle:
+            handle.write("\n".join(rules) + "\n")
+        _print(f"wrote {target}")
+    os.environ["CODEX_HOME"] = codex_home  # doctor checks the same Codex home we just wrote to
+    result = doctor.run_doctor()
+    _print(doctor.render(result) + "Restart Codex so it loads the skills and the rule.")
+    return 0 if result["ok"] else 1
 
 
 def cmd_review(args) -> int:
@@ -227,7 +334,7 @@ def cmd_review(args) -> int:
         return 0
     params = {"task": prompt, "kind": "review", "model": r.model, "effort": r.effort, "fallback": r.fallback,
               "access": "read", "cwd": cwd, "schema": "review", "max_attempts": 1, "escalate": False,
-              "lean": args.lean or bool(config.get("lean")), "route": r.to_dict(),
+              "profile": _profile(args), "route": r.to_dict(),
               "review": {"label": ctx["label"], "adversarial": args.adversarial, "focus": focus}}
     title = f"{'adversarial ' if args.adversarial else ''}review of {ctx['label']}" + (f": {focus}" if focus else "")
     job = jobs.create("review", cwd=cwd, title=title, params=params)
@@ -286,11 +393,18 @@ def cmd_say(args) -> int:
     started = bool(record.get("started"))
     if not started:
         message = prompts.chat_opening(message, cwd=cwd)  # ground the conversation once: cwd, git, date
+    images = _images(args.image, cwd)
+    if images:
+        message += (f"\n\n({len(images)} image(s) attached: first describe what they show that matters here, "
+                    "then answer using that description.)")
     params = {"task": message, "kind": "say", "model": model, "effort": args.effort or record.get("effort"),
+              "images": images,
               "fallback": router.route("", kind="ask", model=model).fallback, "access": record.get("access") or "read",
               "cwd": cwd, "schema": None, "max_attempts": 1, "escalate": False,
               "resume": record["session_id"] if started else None, "allow": ["Bash(cic bus *)"],
-              "lean": bool(config.get("lean")), "name": f"cic:{record['name']}"}
+              "profile": _profile(args), "name": f"cic:{record['name']}",
+              "baseline": {"cost": record.get("cost_usd") or 0.0, "tokens": record.get("tokens") or {}} if started
+              else None}
     job = jobs.create("say", cwd=cwd, title=message, params=params,
                       session_id=None if started else record["session_id"], session_name=record["name"])
     jobs.write_file(job, "system.md", prompts.contract_for("ask", chat=True, role=record.get("role")))
@@ -310,7 +424,11 @@ def cmd_reply(args) -> int:
     params = dict(parent["params"])
     session = (parent.get("progress") or {}).get("session_id") or parent.get("session_id")
     model = router.normalize_model(args.model) or parent.get("model_final") or params.get("model")
-    params.update(resume=session, model=model, plan=False, fork=args.fork)
+    params.update(resume=session, model=model, plan=False, fork=args.fork, images=[],
+                  # Resumed sessions report running totals; this job's usage is the delta from here.
+                  baseline=None if args.fork else {
+                      "cost": parent.get("session_cost_usd") or (parent.get("progress") or {}).get("cost_usd") or 0.0,
+                      "tokens": parent.get("session_tokens") or (parent.get("progress") or {}).get("tokens") or {}})
     if args.verify:
         params["verify"] = args.verify
     if args.access:
@@ -367,11 +485,24 @@ def cmd_result(args) -> int:
     if args.json:
         _print(json.dumps(_summary(job), indent=2, ensure_ascii=False))
     elif job.get("status") in jobs.TERMINAL:
-        _print(jobs.read_final(job["id"]) or render_final(job))
+        _print(render_final(job, full=True) if args.full else (jobs.read_final(job["id"]) or render_final(job)))
     else:
         _print(render_status(job))
         return 3
     return EXIT.get(job.get("status"), 1)
+
+
+def cmd_stats(args) -> int:
+    from .render import render_stats
+    from .util import iso_to_epoch
+
+    cwd = None if args.all else _cwd(args.cwd)
+    cutoff = __import__("time").time() - args.days * 86400
+    rows = [j for j in jobs.list_jobs(cwd=cwd, limit=5000)
+            if (iso_to_epoch(j.get("created_at")) or 0) >= cutoff and j.get("status") in jobs.TERMINAL]
+    scope = f"the last {args.days:g} days" + (" (all directories)" if args.all else f" ({cwd})")
+    _print(render_stats(rows, scope))
+    return 0
 
 
 def cmd_logs(args) -> int:
@@ -589,6 +720,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--done", action="append", help="acceptance criterion (repeatable)")
     p.add_argument("--verify", action="append", help="check that must pass; cic re-runs it (repeatable)")
     p.add_argument("--constraint", action="append", help="constraint (repeatable)")
+    p.add_argument("--hint", action="append", help="likely lead, labeled as unverified (directional stimulus)")
+    p.add_argument("--example", action="append",
+                   help="format/style example: literal text or @path (few-shot; repeatable)")
+    p.add_argument("--image", action="append", help="attach a screenshot or diagram (png/jpg/gif/webp, <=5 MB)")
     p.add_argument("--allow", action="append", help="extra Claude allow rule, e.g. 'Bash(npm install *)'")
     p.add_argument("--deny", action="append", help="extra Claude deny rule")
     p.add_argument("--allow-git-write", action="store_true", help="let Claude commit/push (denied by default)")
@@ -601,7 +736,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--timeout", type=float, metavar="SECONDS", help="hard limit for the whole job")
     p.add_argument("--worktree", help="run in an isolated git worktree with this name")
     p.add_argument("--add-dir", action="append")
-    p.add_argument("--lean", action="store_true", help="--safe-mode: skip plugins, hooks, CLAUDE.md")
+    p.add_argument("--lean", action="store_true", help="same as --profile lean")
+    p.add_argument("--profile", choices=["standard", "lean", "minimal", "full"],
+                   help="context Claude loads: standard (cache-friendly, no MCP), lean (+ no user plugins/hooks), "
+                        "minimal (safe mode), full (everything incl. MCP)")
     p.add_argument("--plan", action="store_true", help="opus plans read-only first, then a fresh run executes")
     p.add_argument("--plan-model", default="opus")
     p.add_argument("--name")
@@ -616,10 +754,33 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--cwd")
     p.add_argument("--file", action="append")
     p.add_argument("--context", action="append")
+    p.add_argument("--hint", action="append")
+    p.add_argument("--image", action="append")
     p.add_argument("--add-dir", action="append")
     p.add_argument("--lean", action="store_true")
+    p.add_argument("--profile", choices=["standard", "lean", "minimal", "full"],
+                   help="context Claude loads: standard (cache-friendly, no MCP), lean (+ no user plugins/hooks), "
+                        "minimal (safe mode), full (everything incl. MCP)")
     _add_wait(p)
     p.set_defaults(func=cmd_ask)
+
+    p = sub.add_parser("improve", help="critique and rewrite a brief before delegating (automatic prompt engineer)")
+    p.add_argument("task", nargs="?")
+    p.add_argument("--task-file")
+    p.add_argument("--kind", choices=router.KINDS)
+    p.add_argument("--model", help="default sonnet")
+    p.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"])
+    p.add_argument("--cwd")
+    p.add_argument("--profile", choices=["standard", "lean", "minimal", "full"],
+                   help="context Claude loads: standard (cache-friendly, no MCP), lean (+ no user plugins/hooks), "
+                        "minimal (safe mode), full (everything incl. MCP)")
+    _add_wait(p)
+    p.set_defaults(func=cmd_improve)
+
+    p = sub.add_parser("setup", help="write the Codex exec-policy rule and check the install")
+    p.add_argument("--codex-home", help="default $CODEX_HOME or ~/.codex")
+    p.add_argument("--no-rule", action="store_true", help="only run the checks")
+    p.set_defaults(func=cmd_setup)
 
     p = sub.add_parser("review", help="Claude reviews local changes (read-only findings)")
     p.add_argument("focus", nargs="*", help="optional focus text")
@@ -630,6 +791,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"])
     p.add_argument("--cwd")
     p.add_argument("--lean", action="store_true")
+    p.add_argument("--profile", choices=["standard", "lean", "minimal", "full"],
+                   help="context Claude loads: standard (cache-friendly, no MCP), lean (+ no user plugins/hooks), "
+                        "minimal (safe mode), full (everything incl. MCP)")
     p.add_argument("--dry-run", action="store_true")
     _add_wait(p)
     p.set_defaults(func=cmd_review)
@@ -652,6 +816,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--effort", choices=["low", "medium", "high", "xhigh", "max"])
     p.add_argument("--access", choices=router.ACCESS_LEVELS, help="used when the session is auto-created")
     p.add_argument("--role")
+    p.add_argument("--image", action="append", help="attach a screenshot or diagram to this turn")
+    p.add_argument("--profile", choices=["standard", "lean", "minimal", "full"],
+                   help="context Claude loads: standard (cache-friendly, no MCP), lean (+ no user plugins/hooks), "
+                        "minimal (safe mode), full (everything incl. MCP)")
     p.add_argument("--cwd")
     _add_wait(p)
     p.set_defaults(func=cmd_say)
@@ -688,8 +856,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("result", help="final report of a job")
     p.add_argument("job", nargs="?", default="last")
+    p.add_argument("--full", action="store_true", help="untrimmed report (default output is length-capped)")
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_result)
+
+    p = sub.add_parser("stats", help="token and cost usage across jobs, with tips to spend less")
+    p.add_argument("--days", type=float, default=7)
+    p.add_argument("--all", action="store_true", help="all directories (default: this one)")
+    p.add_argument("--cwd")
+    p.set_defaults(func=cmd_stats)
 
     p = sub.add_parser("logs", help="step log of a job")
     p.add_argument("job", nargs="?", default="last")

@@ -71,7 +71,8 @@ def remove(name: str) -> bool:
     return False
 
 
-def record_turn(name: str, *, job_id: str, started: bool, cost_usd: float, model: str | None) -> None:
+def record_turn(name: str, *, job_id: str, started: bool, cost_usd: float, model: str | None,
+                tokens: dict | None = None) -> None:
     record = load(name)
     if not record:
         return
@@ -81,6 +82,8 @@ def record_turn(name: str, *, job_id: str, started: bool, cost_usd: float, model
         record["turns"] = int(record.get("turns", 0)) + 1
     if cost_usd:
         record["cost_usd"] = cost_usd  # Claude Code reports the running session total
+    if tokens:
+        record["tokens"] = tokens  # running session totals: the next turn's usage baseline
     if model:
         record["last_model"] = model
     save(record)

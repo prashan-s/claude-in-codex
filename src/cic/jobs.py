@@ -58,6 +58,7 @@ def create(kind: str, *, cwd: str, title: str, params: dict[str, Any], session_i
         "title": oneline(title, 100),
         "cwd": cwd,
         "created_at": now_iso(),
+        "created_ts": time.time(),  # sub-second ordering: ids and created_at only resolve to seconds
         "status": "queued",
         "phase": "queued",
         "session_id": session_id or str(uuid.uuid4()),
@@ -121,8 +122,13 @@ def list_jobs(cwd: str | None = None, limit: int = 20, kinds: set[str] | None = 
         if kinds and data.get("kind") not in kinds:
             continue
         found.append(refresh(data))
-    found.sort(key=lambda j: j.get("created_at", ""), reverse=True)
+    found.sort(key=_created_key, reverse=True)
     return found[:limit]
+
+
+def _created_key(job: dict) -> tuple[float, str]:
+    stamp = job.get("created_ts") or iso_to_epoch(job.get("created_at")) or 0.0
+    return float(stamp), job.get("id", "")
 
 
 def resolve(ref: str | None, cwd: str | None = None) -> dict:
