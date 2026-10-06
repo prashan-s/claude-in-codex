@@ -79,7 +79,7 @@ A mapping of the techniques catalogued at https://www.promptingguide.ai/techniqu
 ## Reflexion
 **What:** feed failure feedback back to the agent so it can self-correct.
 **When:** every write task with a checkable outcome.
-**How:** this is automatic with `--verify`. Failing check output goes back to the same session as a repair turn, and the model escalates after repeated failure. Manually, `cic reply <job> "<review findings>"` does the same. `$claude-pair` automates it with a reviewer agent.
+**How:** this is automatic with `--verify`. Failing check output goes back to the same session as a repair turn, and the model escalates after repeated failure. Manually, `cic reply <job> "<review findings>"` does the same. `$claude-in-codex pair` automates it with a reviewer agent.
 
 ## Multimodal CoT
 **What:** reasoning over images plus text.
