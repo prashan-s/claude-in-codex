@@ -1,6 +1,6 @@
 ---
 name: claude-review
-description: Have Claude Code review local git changes (uncommitted work or a branch against its base) for bugs, regressions, and security problems and return severity-ranked findings with file and line references, without editing anything. Use for asking Claude to review, getting a second opinion on changes Codex just made, or an adversarial pre-merge review. Not for fixing code (claude-delegate) or multi-model opinions (claude-council).
+description: "Claude Code reviews local git changes or a branch read-only and returns severity-ranked findings with file and line. Use for second-opinion or adversarial pre-merge reviews; not for fixing code."
 metadata:
   short-description: Read-only Claude code review of local changes
 ---

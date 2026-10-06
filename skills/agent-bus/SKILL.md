@@ -1,6 +1,6 @@
 ---
 name: agent-bus
-description: Exchange messages between agent processes (Codex, Claude Code sessions, Gemini CLI, scripts) over the cic file-based message bus, covering send, receive, ask-and-wait, thread transcripts, and long-running bus agents started with cic serve. Use when building a custom multi-agent pipeline or when agents must message each other asynchronously (Claude-Claude, Claude-Codex, Claude-Gemini-Codex). For the standard patterns prefer claude-pair or claude-council.
+description: "Message bus between agents (Codex, Claude sessions, Gemini, scripts): send, receive, ask-and-wait, transcripts, and cic serve bus agents. Use for custom multi-agent pipelines; prefer claude-pair or claude-council for standard patterns."
 metadata:
   short-description: Message bus and bus agents for multi-agent IPC
 ---

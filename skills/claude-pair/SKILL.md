@@ -1,6 +1,6 @@
 ---
 name: claude-pair
-description: Run an implement-and-review loop between two agents, where a driver (default Claude Sonnet) makes the change and a navigator (default Claude Opus, or Codex or Gemini) reviews the real diff, repeating until the navigator approves or the rounds run out. Use when the user wants pair programming, a built-in reviewer, or a cross-checked implementation of a risky change, including Claude-to-Claude and Claude-to-Codex pairing.
+description: "Implement-and-review loop: a driver (Claude Sonnet) changes code and a navigator (Claude Opus, Codex, or Gemini) reviews the real diff until it approves. Use for pair programming or cross-checked risky changes."
 metadata:
   short-description: Driver/navigator loop between two agents
 ---
