@@ -1,0 +1,4 @@
+interface:
+  display_name: "Claude in Codex"
+  short_description: "Delegate, review, and collaborate with Claude Code"
+  default_prompt: "Use $claude-in-codex to have Claude fix this bug and verify it with the test suite."
