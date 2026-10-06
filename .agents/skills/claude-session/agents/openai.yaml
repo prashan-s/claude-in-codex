@@ -1,0 +1,4 @@
+interface:
+  display_name: "Claude Session"
+  short_description: "Multi-turn conversation with a persistent Claude"
+  default_prompt: "Use $claude-session to discuss the caching design with Claude over a few turns."
