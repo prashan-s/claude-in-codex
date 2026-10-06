@@ -1,10 +1,3 @@
----
-name: claude-pair
-description: "Implement-and-review loop: a driver (Claude Sonnet) changes code and a navigator (Claude Opus, Codex, or Gemini) reviews the real diff until it approves. Use for pair programming or cross-checked risky changes."
-metadata:
-  short-description: Driver/navigator loop between two agents
----
-
 # Pair programming between agents
 
 ```
@@ -36,4 +29,4 @@ Gemini can be the navigator (`--navigator gemini`) when its CLI is logged in. If
 - Exit 3 means it's still running: `cic wait <job> --timeout 300`.
 
 ## Cost and when not to use it
-Each round costs a full implementation run plus a review. For routine work, `$claude-delegate` with `--verify` is enough. Use pairing for risky, subtle, or security-relevant changes, or when the user asks for a second agent's eyes.
+Each round costs a full implementation run plus a review. For routine work, `$claude-in-codex delegate` with `--verify` is enough. Use pairing for risky, subtle, or security-relevant changes, or when the user asks for a second agent's eyes.
