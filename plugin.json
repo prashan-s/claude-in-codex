@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "claude-in-codex",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "Use Claude Code from Codex: delegate coding tasks with independently verified results, get Claude code reviews, pair Claude with Codex, and run Claude/Codex/Gemini councils, with automatic Haiku/Sonnet/Opus routing.",
   "author": {
     "name": "Prashan Samarathunge",
@@ -10,16 +10,29 @@
   "homepage": "https://github.com/prashan-s/claude-in-codex",
   "repository": "https://github.com/prashan-s/claude-in-codex",
   "license": "MIT",
-  "keywords": ["claude", "claude-code", "codex", "delegation", "code-review", "pair-programming", "multi-agent", "model-routing"],
+  "keywords": [
+    "claude",
+    "claude-code",
+    "codex",
+    "delegation",
+    "code-review",
+    "pair-programming",
+    "multi-agent",
+    "model-routing"
+  ],
   "extensions": {
     "com.openai": {
       "interface": {
         "displayName": "Claude in Codex",
         "shortDescription": "Delegate coding to Claude Code",
-        "longDescription": "Claude in Codex lets Codex hand coding work to Anthropic's Claude Code and get back results that were checked, not just claimed.\n\nWhat it does:\n- Delegate: implement, fix, debug, refactor, test, or document. The plugin's cic CLI runs Claude Code headless, re-runs your verification commands itself, and sends failures back to the same Claude session until the checks pass or the blocker is explained.\n- Route models: Haiku for lookups and small edits, Sonnet for everyday work, Opus for architecture, concurrency, security, or repeated failures. You can always override the choice.\n- Review: read-only, severity-ranked Claude reviews of local changes or a branch.\n- Converse: persistent, named Claude sessions for multi-turn design discussions.\n- Control: watch progress, steer a running job, switch its model, cancel, or continue it later.\n- Collaborate: driver/navigator pair loops (Claude with Claude or Codex), parallel councils of Claude, Codex, and Gemini with a moderator, and a local message bus between agents.\n- Prompt engineering built in: every task type applies established prompting techniques, and cic improve rewrites rough requests into precise briefs.\n- Token aware: cache-friendly context profiles, focused failure output, capped reports, and per-job token accounting.\n\nWho it is for: developers who use both Codex and Claude Code and want one to delegate to, review, or cross-check the other.\n\nRequirements: Codex (CLI or desktop app) on macOS or Linux with a local shell; Claude Code installed and logged in; Python 3.10+; and the cic CLI (install with: uv tool install git+https://github.com/prashan-s/claude-in-codex, then run cic setup). Gemini CLI is optional. The skills run local commands, so they need a Codex environment with shell access to your machine.\n\nSafety: questions and reviews run read-only, git commits and pushes are blocked unless allowed, delegated agents cannot delegate in loops, and the plugin collects no data. Prompts go only to the providers of the CLIs you already use.",
+        "longDescription": "Claude in Codex lets Codex hand coding work to Anthropic's Claude Code and get back results that were checked, not just claimed.\n\nWhat it does:\n- Delegate: implement, fix, debug, refactor, test, or document. The plugin's cic CLI runs Claude Code headless, re-runs your verification commands itself, and sends failures back to the same Claude session until the checks pass or the blocker is explained.\n- Route models: Haiku for lookups and small edits, Sonnet for everyday work, Opus for architecture, concurrency, security, or repeated failures. You can always override the choice.\n- Review: read-only, severity-ranked Claude reviews of local changes or a branch.\n- Converse: persistent, named Claude sessions for multi-turn design discussions.\n- Control: watch progress, steer a running job, switch its model, cancel, or continue it later.\n- Collaborate: driver/navigator pair loops (Claude with Claude or Codex), parallel councils of Claude, Codex, and Gemini with a moderator, and a local message bus between agents.\n- Prompt engineering built in: every task type applies established prompting techniques, and cic improve rewrites rough requests into precise briefs.\n- Token aware: cache-friendly context profiles, focused failure output, capped reports, and per-job token accounting.\n\nWho it is for: developers who use both Codex and Claude Code and want one to delegate to, review, or cross-check the other.\n\nRequirements: Codex (CLI or desktop app) on macOS or Linux with a local shell; Claude Code installed and logged in; Python 3.10+; and the cic CLI (install with: uv tool install git+https://github.com/prashan-s/claude-in-codex, then run cic setup). Gemini CLI is optional. The indexed skill runs local commands, so they need a Codex environment with shell access to your machine.\n\nSafety: questions and reviews run read-only, git commits and pushes are blocked unless allowed, delegated agents cannot delegate in loops, and the plugin collects no data. Prompts go only to the providers of the CLIs you already use.\n\nVersion 2 uses one $claude-in-codex entry point that loads delegation, review, sessions, jobs, prompting, pairing, councils, setup, and agent-bus workflows on demand. Previous standalone $claude-* skill entries have been replaced; the cic CLI commands are unchanged.",
         "developerName": "Prashan Samarathunge",
         "category": "Developer Tools",
-        "capabilities": ["Interactive", "Read", "Write"],
+        "capabilities": [
+          "Interactive",
+          "Read",
+          "Write"
+        ],
         "defaultPrompt": [
           "Have Claude Code fix the failing test and verify it with the test suite",
           "Get a Claude review of my uncommitted changes before I merge",
@@ -33,7 +46,7 @@
         "composerIcon": "./assets/composer-icon.png"
       },
       "publication": {
-        "release_notes": "Version 1.1.0 adds cic improve for prompt rewriting; hints, examples, and image briefs; one uncertainty pass for low-confidence completion reports; same-model councils; cic setup; cache-friendly context profiles; per-job token accounting and cic stats; capped reports; and improved task templates and documentation."
+        "release_notes": "Version 2.0.0 replaces nine standalone skills with one indexed claude-in-codex skill. Workflow instructions load on demand from bundled references. Use $claude-in-codex followed by your request or workflow name. The installer migrates legacy links owned by this checkout; user-owned files are preserved. The cic CLI commands are unchanged."
       }
     }
   }

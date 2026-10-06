@@ -1,6 +1,6 @@
 {
   "name": "claude-in-codex",
-  "version": "1.1.0",
+  "version": "2.0.0",
   "description": "Use Claude Code from Codex: delegate coding tasks with independently verified results, get Claude code reviews, pair Claude with Codex, and run Claude/Codex/Gemini councils, with automatic Haiku/Sonnet/Opus routing.",
   "author": {
     "name": "Prashan Samarathunge",
@@ -19,9 +19,9 @@
     "category": "Developer Tools",
     "capabilities": ["Interactive", "Read", "Write"],
     "defaultPrompt": [
-      "Use $claude-delegate to have Claude fix the failing test and verify it.",
-      "Use $claude-review to get Claude's review of my uncommitted changes.",
-      "Use $claude-council to compare our options with Claude, Codex, and Gemini."
+      "Use $claude-in-codex delegate to have Claude fix the failing test and verify it.",
+      "Use $claude-in-codex review to get Claude's review of my uncommitted changes.",
+      "Use $claude-in-codex council to compare our options with Claude, Codex, and Gemini."
     ],
     "websiteURL": "https://github.com/prashan-s/claude-in-codex",
     "composerIcon": "./assets/composer-icon.png",
