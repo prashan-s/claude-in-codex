@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "claude-in-codex"
-version = "1.0.0"
+version = "1.1.0"
 description = "Control Claude Code headless from Codex: routed delegation, verified results, sessions, review, and an agent message bus."
 readme = "README.md"
 requires-python = ">=3.10"

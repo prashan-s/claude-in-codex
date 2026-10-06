@@ -1,17 +1,20 @@
 {
   "name": "claude-in-codex",
-  "version": "1.0.0",
-  "description": "Control Claude Code from Codex: routed delegation with independent verification, code review, persistent sessions, job steering, pair and council modes, and an agent message bus.",
+  "version": "1.1.0",
+  "description": "Use Claude Code from Codex: delegate coding tasks with independently verified results, get Claude code reviews, pair Claude with Codex, and run Claude/Codex/Gemini councils, with automatic Haiku/Sonnet/Opus routing.",
   "author": {
-    "name": "Prashan Samarathunge"
+    "name": "Prashan Samarathunge",
+    "url": "https://github.com/prashan-s"
   },
+  "homepage": "https://github.com/prashan-s/claude-in-codex",
+  "repository": "https://github.com/prashan-s/claude-in-codex",
   "license": "MIT",
-  "keywords": ["claude", "claude-code", "delegation", "multi-agent", "ipc", "model-routing"],
+  "keywords": ["claude", "claude-code", "codex", "delegation", "code-review", "pair-programming", "multi-agent", "model-routing"],
   "skills": "./skills/",
   "interface": {
     "displayName": "Claude in Codex",
-    "shortDescription": "Delegate to, talk with, and coordinate Claude Code",
-    "longDescription": "Hand coding tasks to headless Claude Code with automatic Haiku/Sonnet/Opus routing, independent verification and repair retries; get Claude reviews of local changes; hold persistent multi-turn sessions; steer or cancel running jobs; run Claude/Codex pair-programming loops and Claude/Codex/Gemini councils; and connect agents over a file-based message bus. Requires the cic CLI and exec-policy rule from install.sh.",
+    "shortDescription": "Delegate coding to Claude Code",
+    "longDescription": "Hand coding tasks to headless Claude Code with automatic Haiku/Sonnet/Opus routing, independent verification, and repair retries; get Claude reviews of local changes; hold persistent multi-turn sessions; steer or cancel running jobs; run Claude/Codex pair-programming loops and Claude/Codex/Gemini councils; and connect agents over a local message bus. Requires the cic CLI (install.sh, or uv tool install git+https://github.com/prashan-s/claude-in-codex then cic setup) and a logged-in Claude Code.",
     "developerName": "Prashan Samarathunge",
     "category": "Developer Tools",
     "capabilities": ["Interactive", "Read", "Write"],
@@ -19,6 +22,9 @@
       "Use $claude-delegate to have Claude fix the failing test and verify it.",
       "Use $claude-review to get Claude's review of my uncommitted changes.",
       "Use $claude-council to compare our options with Claude, Codex, and Gemini."
-    ]
+    ],
+    "websiteURL": "https://github.com/prashan-s/claude-in-codex",
+    "composerIcon": "./assets/composer-icon.png",
+    "logo": "./assets/logo.png"
   }
 }
